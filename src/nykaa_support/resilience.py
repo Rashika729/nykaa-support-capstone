@@ -13,7 +13,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.errors import NodeTimeoutError
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, RetryPolicy, TimeoutPolicy, interrupt
-
+from nykaa_support.agent import builder as support_agent_builder
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CHECKPOINT_FILE = PROJECT_ROOT / "data" / "checkpoints" / "checkpoints.sqlite"
@@ -162,6 +162,45 @@ async def demonstrate_global_timeout() -> None:
         raise AssertionError("Expected the global run timeout to fire.")
 
 
+def demonstrate_support_graph_resume(checkpointer: SqliteSaver) -> None:
+    """Pause and resume the actual support-agent graph using SQLite."""
+    graph = support_agent_builder.compile(
+        checkpointer=checkpointer,
+        interrupt_before=["escalation_score"],
+    )
+    thread_id = f"support-resume-{uuid.uuid4().hex[:8]}"
+    config = {"configurable": {"thread_id": thread_id}}
+
+    completed_before = []
+    for update in graph.stream(
+        {"session_id": thread_id, "message": "Check NK000001"},
+        config,
+        stream_mode="updates",
+    ):
+        completed_before.extend(
+            node for node in update if node != "__interrupt__"
+        )
+
+    checkpoint = graph.get_state(config)
+    assert checkpoint.next == ("escalation_score",), checkpoint.next
+    print("Support graph nodes completed before pause:", completed_before)
+    print("Support graph next node at pause:", checkpoint.next)
+    print("Support graph checkpoint state saved:", bool(checkpoint.values))
+
+    completed_after = []
+    for update in graph.stream(None, config, stream_mode="updates"):
+        completed_after.extend(
+            node for node in update if node != "__interrupt__"
+        )
+
+    repeated = set(completed_before) & set(completed_after)
+    assert not repeated, f"Completed support nodes ran again: {repeated}"
+    final_state = graph.get_state(config)
+    assert not final_state.next, final_state.next
+    assert final_state.values.get("response"), final_state.values
+
+    print("Support graph nodes completed after resume:", completed_after)
+    print("PASS: support graph resumed from SQLite without rerunning completed nodes.")
 async def main() -> None:
     CHECKPOINT_FILE.parent.mkdir(parents=True, exist_ok=True)
     REPORT_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -180,6 +219,7 @@ async def main() -> None:
     connection = sqlite3.connect(str(CHECKPOINT_FILE), check_same_thread=False)
     try:
         checkpointer = SqliteSaver(connection)
+        demonstrate_support_graph_resume(checkpointer)
         approval_graph = approval_builder.compile(checkpointer=checkpointer)
         config = {
             "configurable": {
@@ -236,9 +276,9 @@ async def main() -> None:
     report = f"""# Resilience Demonstration
 
 - SQLite checkpoint file: `data/checkpoints/checkpoints.sqlite`
-- Stable thread ID: `capstone-resilience-demo-v2`.
-- Before interruption, `prepare_review` and `validate_review_context` each ran once; the graph paused at `wait_for_review`.
-- Resume used the same thread ID. Execution counters stayed at one for both completed nodes, while `finish_review` ran once.
+- Main support graph: paused after `input_guard`, `request_router`, and `order_lookup`, with `escalation_score` next.
+- Main support graph resume: the same SQLite thread continued at `escalation_score`; `mock_llm_response` and `persist_memory` completed, and no pre-pause nodes reran.
+- Approval-flow graph: separately paused before `wait_for_review` and resumed on the same thread; its completed-node counters did not increase.
 - Retry: transient tool succeeded after {retry_attempts} attempts. Configuration: initial interval 0.02 seconds, backoff factor 2, maximum interval 0.04 seconds, three maximum attempts, jitter enabled.
 - Per-node timeout: simulated `slow_node` uses a 0.05-second run timeout.
 - Global timeout: `asyncio.wait_for` caps a separate graph run at 0.05 seconds.

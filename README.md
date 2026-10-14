@@ -38,7 +38,7 @@ The 15-query RAG-triad report covers all 12 policy topics plus three unsupported
 
 `mcp_server.py` exposes `check_order_status` over HTTP at `http://127.0.0.1:8000/mcp`. Start the server in one PowerShell window with `.\.venv\Scripts\python.exe .\src\nykaa_support\mcp_server.py`, then run `mcp_client.py` in another window to call it for two sample records.
 
-`resilience.py` uses LangGraph’s SQLite saver at `data/checkpoints/checkpoints.sqlite`. It pauses after two nodes, resumes the same thread, and confirms the completed nodes were not rerun. It also demonstrates jittered exponential retries, a per-node timeout, and a global timeout. Results are recorded in `reports/resilience_demo.md`.
+`resilience.py` uses LangGraph’s SQLite saver at `data/checkpoints/checkpoints.sqlite`. It demonstrates pause/resume on the support-agent graph: `input_guard`, `request_router`, and `order_lookup` complete before the pause, and execution resumes at `escalation_score` without rerunning them. A separate approval-flow graph also demonstrates same-thread resume. The script demonstrates jittered exponential retries, a per-node timeout, and a global timeout. Results are recorded in `reports/resilience_demo.md`.
 
 ## Setup and demonstrations
 
