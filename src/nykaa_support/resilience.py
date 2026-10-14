@@ -3,6 +3,7 @@
 import asyncio
 import os
 import sqlite3
+import uuid
 from pathlib import Path
 from typing import TypedDict
 
@@ -182,7 +183,7 @@ async def main() -> None:
         approval_graph = approval_builder.compile(checkpointer=checkpointer)
         config = {
             "configurable": {
-                "thread_id": "capstone-resilience-demo-v2",
+                "thread_id": f"capstone-resilience-demo-{uuid.uuid4().hex[:8]}",
             }
         }
 
