@@ -1,4 +1,4 @@
-"""Six-node LangGraph support agent using deterministic local behavior."""
+﻿"""Six-node LangGraph support agent using deterministic local behavior."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ import csv
 import json
 import os
 import re
+import sqlite3
+from langgraph.checkpoint.sqlite import SqliteSaver
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, TypedDict
@@ -22,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 ORDERS_FILE = ROOT / "data" / "orders.csv"
 DB_DIR = ROOT / "data" / "chroma"
 MEMORY_DIR = ROOT / "data" / "memory"
+CHECKPOINT_FILE = ROOT / "data" / "checkpoints" / "checkpoints.sqlite"
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 SIMILARITY_THRESHOLD = 0.465
 
@@ -156,8 +159,15 @@ def input_guard(state: AgentState) -> dict:
         "scope_block": asks_for_official_policy(raw_message),
         "history": load_memory(state["session_id"]),
         "tools_called": [],
+        "order_id": None,
+        "order_result": {},
+        "evidence": [],
+        "sources": [],
+        "answer": "",
+        "escalation_score": 0,
+        "escalation_required": False,
+        "response": {},
     }
-
 
 def request_router(state: AgentState) -> dict:
     message = state["safe_message"]
@@ -417,7 +427,13 @@ builder.add_edge("escalation_score", "mock_llm_response")
 builder.add_edge("mock_llm_response", "persist_memory")
 builder.add_edge("persist_memory", END)
 
-support_graph = builder.compile()
+CHECKPOINT_FILE.parent.mkdir(parents=True, exist_ok=True)
+_CHECKPOINT_CONNECTION = sqlite3.connect(
+    str(CHECKPOINT_FILE),
+    check_same_thread=False,
+)
+_SUPPORT_CHECKPOINTER = SqliteSaver(_CHECKPOINT_CONNECTION)
+support_graph = builder.compile(checkpointer=_SUPPORT_CHECKPOINTER)
 
 
 def run_agent(payload: ChatRequest | dict) -> ChatResponse:
@@ -426,7 +442,11 @@ def run_agent(payload: ChatRequest | dict) -> ChatResponse:
         else ChatRequest.model_validate(payload)
     )
     result = support_graph.invoke(
-        {"session_id": request.session_id, "message": request.message}
+        {
+            "session_id": request.session_id,
+            "message": mask_pii(request.message),
+        },
+        config={"configurable": {"thread_id": request.session_id}},
     )
     return ChatResponse.model_validate(result["response"])
 

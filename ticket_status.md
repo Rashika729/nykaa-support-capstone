@@ -13,8 +13,8 @@
 | Conversation transcripts | Done | `reports/memory_demo.md` shows a grounded follow-up and a separate fresh session |
 | FastAPI and safe request traces | Done | `/health`, `/chat`, and `/ask`; smoke checks confirm trace IDs, timing, and masked phone/card values |
 | RAG-triad evaluation | Done | 15 queries; latest deterministic MOCK_LLM rubric averages are 1.000 for context relevance, groundedness, and answer relevance |
-| MCP client/server | Done | Separate local client called `check_order_status` for two sample records |
-| SQLite resume, retries, and timeouts | Done | `reports/resilience_demo.md`; same-thread resume, retry recovery, node timeout, and global timeout demonstrated |
+| MCP client/server | Done | Separate HTTP client called `check_order_status` at `http://127.0.0.1:8000/mcp` for two sample records |
+| SQLite resume, retries, and timeouts | Done | `agent.py` checkpoints the support graph by session ID; `reports/resilience_demo.md` demonstrates same-thread resume, retry recovery, node timeout, and global timeout |
 | README and ignore rules | Updated locally | README records current assignment choices and results; `.gitignore` excludes runtime files |
 | Public GitHub submission | Earlier version published | https://github.com/Rashika729/nykaa-support-capstone; latest assignment updates are pending commit and push |
 

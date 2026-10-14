@@ -24,7 +24,7 @@ Order escalation is calculated as `0.70 × delayed_shipment + 0.30 × (days_sinc
 
 ## Part 2 — LangGraph agent
 
-The graph has eight nodes and a conditional route to order lookup, policy search, or no tool. Pydantic request and response models validate structured data. JSON conversation memory is stored by session. `eval/demo_memory.py` writes a transcript showing a grounded follow-up in one session and an empty starting history in a separate fresh session.
+The graph has eight nodes and a conditional route to order lookup, policy search, or no tool. Pydantic request and response models validate structured data. JSON conversation memory is stored by session. The support graph also uses a SQLite checkpointer at `data/checkpoints/checkpoints.sqlite`, keyed by session ID; messages are masked before entering checkpointed state. `eval/demo_memory.py` writes a transcript showing a grounded follow-up in one session and an empty starting history in a separate fresh session.
 
 Input guardrails mask email, Indian phone numbers, and card last-four values and block prompt-injection patterns. The output abstains when retrieval lacks sufficient evidence or a request asks for official/current policy.
 
@@ -36,7 +36,7 @@ The 15-query RAG-triad report covers all 12 policy topics plus three unsupported
 
 ## Part 4 — MCP and resilience
 
-`mcp_server.py` exposes `check_order_status` as a FastMCP tool. `mcp_client.py` starts a separate local server process and successfully calls it for two sample records.
+`mcp_server.py` exposes `check_order_status` over HTTP at `http://127.0.0.1:8000/mcp`. Start the server in one PowerShell window with `.\.venv\Scripts\python.exe .\src\nykaa_support\mcp_server.py`, then run `mcp_client.py` in another window to call it for two sample records.
 
 `resilience.py` uses LangGraph’s SQLite saver at `data/checkpoints/checkpoints.sqlite`. It pauses after two nodes, resumes the same thread, and confirms the completed nodes were not rerun. It also demonstrates jittered exponential retries, a per-node timeout, and a global timeout. Results are recorded in `reports/resilience_demo.md`.
 
@@ -57,3 +57,7 @@ py -3.14 -m venv .venv
 .\.venv\Scripts\python.exe .\src\nykaa_support\mcp_client.py
 .\.venv\Scripts\python.exe .\src\nykaa_support\resilience.py
 .\.venv\Scripts\python.exe -m uvicorn nykaa_support.api:app --reload
+
+## Privacy limitations
+
+Any customer names and delivery addresses in examples are fabricated. Names and delivery addresses are free text and are outside this demo's reliable masking scope. The input guardrail masks fixed-format phone numbers and payment-card last-four values.

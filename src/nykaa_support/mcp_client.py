@@ -10,7 +10,7 @@ SERVER_SCRIPT = Path(__file__).with_name("mcp_server.py").resolve()
 
 
 async def main() -> None:
-    async with Client(SERVER_SCRIPT) as client:
+    async with Client("http://127.0.0.1:8000/mcp") as client:
         tools = await client.list_tools()
         names = {tool.name for tool in tools}
         print("Server tools:", ", ".join(sorted(names)))
