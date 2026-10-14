@@ -1,4 +1,4 @@
-﻿"""Measure similarity calibration and document-level P@3/R@3 for both indexes."""
+"""Measure similarity calibration and document-level P@3/R@3 for both indexes."""
 
 import json
 from pathlib import Path
@@ -69,17 +69,24 @@ def evaluate_strategy(queries, strategy):
             "**No separating gap was observed; do not claim this strategy has a calibrated threshold yet.**",
         ])
 
+    chunk_count = len(prepare(strategy)[0])
     p_values = []
     r_values = []
     lines.extend(["", "### Document-level Precision@3 and Recall@3", ""])
     for query_id in METRIC_QUERY_IDS:
         query = by_id[query_id]
-        hits = retrieve(query["question"], strategy=strategy, k=3)
+        hits = retrieve(query["question"], strategy=strategy, k=chunk_count)
         retrieved_docs = []
         for hit in hits:
             parent = Path(hit["source"]).stem
             if parent not in retrieved_docs:
                 retrieved_docs.append(parent)
+                if len(retrieved_docs) == 3:
+                    break
+        if len(retrieved_docs) < 3:
+            raise ValueError(
+                f"Could not retrieve three distinct parent documents for {query_id}."
+            )
         relevant = {query["expected_source"]}
         matched = len(set(retrieved_docs) & relevant)
         precision = matched / 3
@@ -94,7 +101,6 @@ def evaluate_strategy(queries, strategy):
 
     avg_p = sum(p_values) / len(p_values)
     avg_r = sum(r_values) / len(r_values)
-    chunk_count = len(prepare(strategy)[0])
     lines.extend([
         "",
         f"Average Precision@3: **{avg_p:.3f}**.",
@@ -149,7 +155,8 @@ def main():
         "# Retrieval Calibration and Document-level Metrics",
         "",
         "Similarity is cosine similarity from normalized local MiniLM embeddings.",
-        "P@3 and R@3 map the top-three chunks to parent documents and deduplicate them.",
+        "Document-level P@3 uses the first three distinct parent documents in ranked chunk order; duplicate chunks are skipped.",
+        "The evaluator scans ranked chunks until it finds three distinct documents. R@3 uses unique relevant parent documents retrieved.",
         "",
     ]
     for result in results:
