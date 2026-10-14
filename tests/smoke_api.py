@@ -70,3 +70,28 @@ print("PASS: prompt injection was blocked before tool use")
 print("PASS: /health returned MOCK_LLM status")
 print("PASS: /chat returned the sample order status")
 print("PASS: the JSONL trace masked email and phone and hashed the session ID")
+
+invalid_phone = "9706000000"
+invalid = client.post(
+    "/chat",
+    json={
+        "session_id": "bad session",
+        "message": f"My phone is {invalid_phone}.",
+    },
+)
+assert invalid.status_code == 422, invalid.text
+
+trace_lines = [
+    line for line in trace_path.read_text(encoding="utf-8").splitlines()
+    if line.strip()
+]
+invalid_trace = json.loads(trace_lines[-1])
+
+assert invalid_trace["path"] == "/chat", invalid_trace
+assert invalid_trace["status_code"] == 422, invalid_trace
+assert invalid_trace["trace_id"], invalid_trace
+assert invalid_trace["duration_ms"] >= 0, invalid_trace
+assert invalid_phone not in json.dumps(invalid_trace), invalid_trace
+assert "[REDACTED_PHONE]" in invalid_trace["message"], invalid_trace
+
+print("PASS: rejected /chat request was traced with masked PII")
