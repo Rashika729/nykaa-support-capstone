@@ -6,7 +6,7 @@
 
 ## Scope and safety
 
-All orders and policy documents are fictional; they are not official or current Nykaa policies. Agent responses use deterministic `MOCK_LLM` templates, with no LLM API calls or keys. MiniLM embeddings run locally after the model is available in the Hugging Face cache.
+All orders and policy documents are fictional; they are not official or current Nykaa policies. Agent responses use deterministic `MOCK_LLM` templates, with no LLM API calls or keys. On the first indexing run, the MiniLM model is downloaded from Hugging Face and saved to the local cache, so that run needs internet access. Later runs load the cached model locally. The project makes no LLM API calls.
 
 ## Part 1 — Dataset and RAG
 

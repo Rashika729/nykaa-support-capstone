@@ -1,4 +1,4 @@
-﻿"""Index and search fictional policy documents with local MiniLM embeddings."""
+"""Index and search fictional policy documents with local MiniLM embeddings."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-os.environ["HF_HUB_OFFLINE"] = "1"
 
 import chromadb
 from sentence_transformers import SentenceTransformer
