@@ -1,125 +1,164 @@
-﻿"""Measure retrieval quality and calibrate a threshold with supported and unsupported questions."""
-
-from __future__ import annotations
+﻿"""Measure similarity calibration and document-level P@3/R@3 for both indexes."""
 
 import json
-import os
 from pathlib import Path
 
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-
-import chromadb
-from sentence_transformers import SentenceTransformer
+from nykaa_support.rag import prepare, retrieve
 
 ROOT = Path(__file__).resolve().parents[1]
 QUERY_FILE = ROOT / "eval" / "queries.jsonl"
-DB_DIR = ROOT / "data" / "chroma"
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+REPORT_FILE = ROOT / "reports" / "retrieval_evaluation.md"
+STRATEGIES = ("fixed", "sentence")
+IN_SCOPE_CALIBRATION_IDS = {"q01", "q02", "q03", "q04", "q05"}
+OUT_OF_SCOPE_CALIBRATION_IDS = {"q13", "q14"}
+METRIC_QUERY_IDS = ("q01", "q02", "q03", "q04", "q05")
 
 
-def load_queries() -> list[dict]:
+def load_queries():
     with QUERY_FILE.open(encoding="utf-8-sig") as file:
-        queries = [json.loads(line) for line in file if line.strip()]
-
-    if len(queries) < 15:
-        raise ValueError(f"Expected at least 15 queries; found {len(queries)}.")
-    return queries
+        return [json.loads(line) for line in file if line.strip()]
 
 
-def evaluate_strategy(model: SentenceTransformer, strategy: str, queries: list[dict]) -> None:
-    collection_name = (
-        "nykaa_kb_fixed_chunks"
-        if strategy == "fixed"
-        else "nykaa_kb_paragraph_chunks"
-    )
-    client = chromadb.PersistentClient(path=str(DB_DIR))
-    collection = client.get_collection(name=collection_name)
-    records = []
+def top1_similarity(query, strategy):
+    hits = retrieve(query["question"], strategy=strategy, k=1)
+    return hits[0]["similarity"] if hits else 0.0
 
-    for query in queries:
-        vector = model.encode(
-            [query["question"]], normalize_embeddings=True
-        )[0].tolist()
-        result = collection.query(
-            query_embeddings=[vector],
-            n_results=3,
-            include=["metadatas", "distances"],
-        )
 
-        sources = [Path(item["source"]).stem for item in result["metadatas"][0]]
-        scores = [1.0 - distance for distance in result["distances"][0]]
-        expected = query.get("expected_source")
-        supported = expected is not None
-        reciprocal_rank = (
-            next(
-                (1.0 / (rank + 1) for rank, source in enumerate(sources) if source == expected),
-                0.0,
-            )
-            if supported
-            else 0.0
-        )
-        records.append(
-            {
-                "supported": supported,
-                "top1_correct": supported and sources[0] == expected,
-                "hit_at_3": supported and expected in sources,
-                "reciprocal_rank": reciprocal_rank,
-                "top1_score": scores[0],
-            }
-        )
+def evaluate_strategy(queries, strategy):
+    by_id = {query["id"]: query for query in queries}
+    lines = [f"## {strategy.title()} chunking", "", "### Top-1 similarity calibration", ""]
+    in_scores = []
+    out_scores = []
 
-    supported_rows = [row for row in records if row["supported"]]
-    unsupported_rows = [row for row in records if not row["supported"]]
-    positive_count = len(supported_rows)
+    for query_id in sorted(IN_SCOPE_CALIBRATION_IDS):
+        query = by_id[query_id]
+        score = top1_similarity(query, strategy)
+        in_scores.append(score)
+        lines.append(f"- {query_id} (in-scope): {score:.3f} — {query['question']}")
 
-    top1 = sum(row["top1_correct"] for row in supported_rows) / positive_count
-    hit_at_3 = sum(row["hit_at_3"] for row in supported_rows) / positive_count
-    mrr = sum(row["reciprocal_rank"] for row in supported_rows) / positive_count
+    for query_id in sorted(OUT_OF_SCOPE_CALIBRATION_IDS):
+        query = by_id[query_id]
+        score = top1_similarity(query, strategy)
+        out_scores.append(score)
+        lines.append(f"- {query_id} (out-of-scope): {score:.3f} — {query['question']}")
 
-    threshold_results = []
-    for step in range(101):
-        threshold = step / 100
-        selected_rows = [
-            row for row in records if row["top1_score"] >= threshold
-        ]
-        true_positive = sum(
-            row["supported"] and row["top1_correct"] for row in selected_rows
-        )
-        precision = true_positive / len(selected_rows) if selected_rows else 0.0
-        recall = true_positive / positive_count
-        f1 = (
-            2 * precision * recall / (precision + recall)
-            if precision + recall
-            else 0.0
-        )
-        rejected = sum(
-            row["top1_score"] < threshold for row in unsupported_rows
-        )
-        rejection_rate = rejected / len(unsupported_rows) if unsupported_rows else 0.0
-        threshold_results.append(
-            (f1, precision, threshold, recall, rejection_rate)
-        )
-
-    best = max(threshold_results, key=lambda row: (row[0], row[1], row[2]))
-    print(f"\n{strategy.upper()} chunking")
-    print(f"Answerable questions: {positive_count}")
-    print(f"Top-1 accuracy:       {top1:.3f}")
-    print(f"Hit@3:                {hit_at_3:.3f}")
-    print(f"MRR:                  {mrr:.3f}")
-    print(f"Unsupported questions: {len(unsupported_rows)}")
-    print(
-        f"Selected threshold:   {best[2]:.2f} "
-        f"(precision={best[1]:.3f}, recall={best[3]:.3f}, "
-        f"F1={best[0]:.3f}, unsupported rejection={best[4]:.3f})"
+    edge_query = by_id["q15"]
+    edge_score = top1_similarity(edge_query, strategy)
+    lines.append(
+        f"- q15 (official-policy edge case, not used to calibrate): "
+        f"{edge_score:.3f} — {edge_query['question']}"
     )
 
+    min_in = min(in_scores)
+    max_out = max(out_scores)
+    if min_in > max_out:
+        threshold = (min_in + max_out) / 2
+        lines.extend([
+            "",
+            f"Observed in-scope range: {min(in_scores):.3f}–{max(in_scores):.3f}.",
+            f"Observed out-of-scope range: {min(out_scores):.3f}–{max(out_scores):.3f}.",
+            f"Selected threshold: ({min_in:.3f} + {max_out:.3f}) / 2 = **{threshold:.3f}**.",
+            "The observed calibration values have a separating gap.",
+        ])
+    else:
+        threshold = None
+        lines.extend([
+            "",
+            f"Observed in-scope minimum: {min_in:.3f}.",
+            f"Observed out-of-scope maximum: {max_out:.3f}.",
+            "**No separating gap was observed; do not claim this strategy has a calibrated threshold yet.**",
+        ])
 
-def main() -> None:
+    p_values = []
+    r_values = []
+    lines.extend(["", "### Document-level Precision@3 and Recall@3", ""])
+    for query_id in METRIC_QUERY_IDS:
+        query = by_id[query_id]
+        hits = retrieve(query["question"], strategy=strategy, k=3)
+        retrieved_docs = []
+        for hit in hits:
+            parent = Path(hit["source"]).stem
+            if parent not in retrieved_docs:
+                retrieved_docs.append(parent)
+        relevant = {query["expected_source"]}
+        matched = len(set(retrieved_docs) & relevant)
+        precision = matched / 3
+        recall = matched / len(relevant)
+        p_values.append(precision)
+        r_values.append(recall)
+        lines.append(
+            f"- {query_id}: retrieved {retrieved_docs}; relevant {sorted(relevant)}; "
+            f"P@3 = {matched}/3 = {precision:.3f}; "
+            f"R@3 = {matched}/{len(relevant)} = {recall:.3f}."
+        )
+
+    avg_p = sum(p_values) / len(p_values)
+    avg_r = sum(r_values) / len(r_values)
+    chunk_count = len(prepare(strategy)[0])
+    lines.extend([
+        "",
+        f"Average Precision@3: **{avg_p:.3f}**.",
+        f"Average Recall@3: **{avg_r:.3f}**.",
+        f"Indexed chunks: {chunk_count}.",
+        "",
+    ])
+    return {
+        "strategy": strategy,
+        "threshold": threshold,
+        "min_in": min_in,
+        "max_out": max_out,
+        "avg_p": avg_p,
+        "avg_r": avg_r,
+        "chunks": chunk_count,
+        "lines": lines,
+    }
+
+
+def main():
     queries = load_queries()
-    print(f"Loading cached model for {len(queries)} labeled questions...")
-    model = SentenceTransformer(MODEL_NAME)
-    evaluate_strategy(model, "fixed", queries)
-    evaluate_strategy(model, "paragraph", queries)
+    if len(queries) != 15:
+        raise ValueError(f"Expected exactly 15 evaluation queries; found {len(queries)}.")
+    results = [evaluate_strategy(queries, strategy) for strategy in STRATEGIES]
+
+    fixed, sentence = results
+    if fixed["threshold"] is None and sentence["threshold"] is None:
+        recommendation = (
+            "Neither strategy separated the measured in-scope and out-of-scope values. "
+            "Revise the corpus or calibration examples and measure again before choosing "
+            "a deployment threshold."
+        )
+    else:
+        eligible = [item for item in results if item["threshold"] is not None]
+        winner = max(
+            eligible,
+            key=lambda item: (item["avg_p"] + item["avg_r"], -item["chunks"]),
+        )
+        other = sentence if winner is fixed else fixed
+        recommendation = (
+            f"Deploy {winner['strategy']} chunking: its five-query averages were "
+            f"Precision@3 {winner['avg_p']:.3f} and Recall@3 {winner['avg_r']:.3f}, "
+            f"compared with {other['avg_p']:.3f} and {other['avg_r']:.3f} for "
+            f"{other['strategy']}. "
+            f"{winner['strategy'].title()} also showed an in-scope minimum of "
+            f"{winner['min_in']:.3f} above an out-of-scope maximum of "
+            f"{winner['max_out']:.3f}, allowing a measured threshold of "
+            f"{winner['threshold']:.3f}."
+        )
+
+    report = [
+        "# Retrieval Calibration and Document-level Metrics",
+        "",
+        "Similarity is cosine similarity from normalized local MiniLM embeddings.",
+        "P@3 and R@3 map the top-three chunks to parent documents and deduplicate them.",
+        "",
+    ]
+    for result in results:
+        report.extend(result["lines"])
+    report.extend(["## Recommendation", "", recommendation, ""])
+    REPORT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_FILE.write_text("\n".join(report), encoding="utf-8")
+    print("\n".join(report))
+    print(f"\nReport saved to {REPORT_FILE}")
 
 
 if __name__ == "__main__":

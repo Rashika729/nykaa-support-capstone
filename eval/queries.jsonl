@@ -1,25 +1,15 @@
-﻿{"id":"q01","question":"What status does a new order start with?","expected_source":"01-order-confirmation"}
-{"id":"q02","question":"How do I check a specific order?","expected_source":"01-order-confirmation"}
-{"id":"q03","question":"Can you guarantee when my package will arrive?","expected_source":"02-delivery-estimates"}
-{"id":"q04","question":"Where can I check the current delivery status?","expected_source":"02-delivery-estimates"}
-{"id":"q05","question":"Can I cancel an order that is still processing?","expected_source":"03-cancel-before-shipping"}
-{"id":"q06","question":"What should I do if I want to stop an order before it ships?","expected_source":"03-cancel-before-shipping"}
-{"id":"q07","question":"Can I cancel my order after it has shipped?","expected_source":"04-cancel-after-shipping"}
-{"id":"q08","question":"Can you stop a package that is out for delivery?","expected_source":"04-cancel-after-shipping"}
-{"id":"q09","question":"Can I change the delivery address?","expected_source":"05-address-changes"}
-{"id":"q10","question":"Should I send you my new address in this chat?","expected_source":"05-address-changes"}
-{"id":"q11","question":"How long after delivery can I request a return in this demo?","expected_source":"06-return-window"}
-{"id":"q12","question":"Who decides whether a return is accepted?","expected_source":"06-return-window"}
-{"id":"q13","question":"Can this agent issue a refund?","expected_source":"07-refund-timing"}
-{"id":"q14","question":"When will my refund reach my bank?","expected_source":"07-refund-timing"}
-{"id":"q15","question":"My product arrived damaged. What should I do?","expected_source":"08-damaged-items"}
-{"id":"q16","question":"One item was missing from my delivered parcel. Can you verify that?","expected_source":"09-missing-items"}
-{"id":"q17","question":"Which payment methods can appear in the sample orders?","expected_source":"10-payment-methods"}
-{"id":"q18","question":"Can I tell the support agent my one-time payment code?","expected_source":"10-payment-methods"}
-{"id":"q19","question":"What coupon codes are active today?","expected_source":"11-promotions"}
-{"id":"q20","question":"Who should handle a payment dispute or safety complaint?","expected_source":"12-human-escalation"}
-{"id":"q21","question":"What is the weather in Mumbai today?","expected_source":null}
-{"id":"q22","question":"What is the current stock price of Nykaa?","expected_source":null}
-{"id":"q23","question":"Tell me the official current Nykaa return policy.","expected_source":null}
-{"id":"q24","question":"Recommend a foundation shade for my skin tone.","expected_source":null}
-{"id":"q25","question":"What is the score in todays cricket match?","expected_source":null}
+{"id":"q01","question":"What is the return review window for a Beauty item in this demo?","expected_source":"01-return-window-by-category","expected_facts":["Beauty","3 days"],"facts":["Beauty","3 days"],"answerable":true}
+{"id":"q02","question":"If a COD return is approved, how long may the mock refund take?","expected_source":"02-cod-refund-timelines","expected_facts":["5 to 7 business days","human"],"facts":["5 to 7 business days","human"],"answerable":true}
+{"id":"q03","question":"What delivery estimate does the demo give for a remote destination?","expected_source":"03-delivery-slas","expected_facts":["4 to 7 business days","not a guaranteed"],"facts":["4 to 7 business days","not a guaranteed"],"answerable":true}
+{"id":"q04","question":"What conditions are checked for a reverse pickup review?","expected_source":"04-reverse-pickup-eligibility","expected_facts":["Delivered","return window","human"],"facts":["Delivered","return window","human"],"answerable":true}
+{"id":"q05","question":"What warranty review period is listed for Electronics in the simulation?","expected_source":"05-warranty-by-category","expected_facts":["12 month"],"facts":["12 month"],"answerable":true}
+{"id":"q06","question":"Can a Placed sample order be reviewed for cancellation?","expected_source":"06-order-cancellation","expected_facts":["Placed","cancellation review","human"],"facts":["Placed","cancellation review","human"],"answerable":true}
+{"id":"q07","question":"How are sample loyalty points valued and capped?","expected_source":"07-loyalty-points-redemption","expected_facts":["one point","10 percent","cannot apply"],"facts":["one point","10 percent","cannot apply"],"answerable":true}
+{"id":"q08","question":"What should I do if my payment is still pending?","expected_source":"08-payment-failure-retry","expected_facts":["order record","repeated attempts","one-time code"],"facts":["order record","repeated attempts","one-time code"],"answerable":true}
+{"id":"q09","question":"Can I request a footwear size exchange after delivery?","expected_source":"09-size-exchange","expected_facts":["Footwear","7 days","unused"],"facts":["Footwear","7 days","unused"],"answerable":true}
+{"id":"q10","question":"What does the demo say to do about a damaged item?","expected_source":"10-damaged-item-claims","expected_facts":["48 hours","human review","packaging"],"facts":["48 hours","human review","packaging"],"answerable":true}
+{"id":"q11","question":"Does this capstone support international delivery?","expected_source":"11-international-shipping-restrictions","expected_facts":["within India only","international","human"],"facts":["within India only","international","human"],"answerable":true}
+{"id":"q12","question":"Which issues need immediate human escalation?","expected_source":"12-customer-support-escalation-matrix","expected_facts":["safety concerns","fraud","payment disputes","human review"],"facts":["safety concerns","fraud","payment disputes","human review"],"answerable":true}
+{"id":"q13","question":"What is the current stock price of Nykaa?","expected_source":null,"expected_facts":[],"facts":[],"answerable":false}
+{"id":"q14","question":"What is the weather in Mumbai today?","expected_source":null,"expected_facts":[],"facts":[],"answerable":false}
+{"id":"q15","question":"What is Nykaa's official current return policy?","expected_source":null,"expected_facts":[],"facts":[],"answerable":false}

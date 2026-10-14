@@ -1,70 +1,59 @@
 ﻿# Nykaa Domain Support Agent
 
-A local educational capstone demonstrating an e-commerce support agent with LangGraph, retrieval-augmented generation, FastAPI, and MCP.
+**Completed track: Nykaa (E-commerce & Retail).** This repository contains a local, fictional support-agent capstone using LangGraph, ChromaDB, FastAPI, and FastMCP.
+
+**Public submission:** [Rashika729/nykaa-support-capstone](https://github.com/Rashika729/nykaa-support-capstone)
 
 ## Scope and safety
 
-All orders and policy documents are fictional. They do not represent official or current Nykaa policies. The agent uses a deterministic MOCK_LLM and requires no LLM API key. The local MiniLM embedding model must be downloaded once before offline retrieval can run.
+All orders and policy documents are fictional; they are not official or current Nykaa policies. Agent responses use deterministic `MOCK_LLM` templates, with no LLM API calls or keys. MiniLM embeddings run locally after the model is available in the Hugging Face cache.
 
-## Project components
+## Part 1 — Dataset and RAG
 
-- `data/orders.csv`: 48 synthetic sample orders
-- `data/knowledge_base/`: 12 fictional support documents
-- `src/nykaa_support/rag.py`: fixed-size and paragraph chunking with separate ChromaDB indexes
-- `src/nykaa_support/agent.py`: LangGraph agent, order lookup, policy search, escalation, memory, and guardrails
-- `src/nykaa_support/api.py`: FastAPI `/health` and `/chat` endpoints with PII-safe traces
-- `src/nykaa_support/mcp_server.py` and `mcp_client.py`: local FastMCP tools and client
-- `src/nykaa_support/resilience.py`: SQLite checkpoint resume, retry, and timeout demonstrations
-- `eval/` and `reports/`: evaluation scripts and recorded results
+Run `src/nykaa_support/dataset.py` to generate 50 synthetic orders. The base and selected seed is **2603**. Category weights are Apparel 20%, Electronics 20%, Home 20%, Footwear 20%, and Beauty 20%. Status weights are Placed 20%, Shipped 25%, Delivered 35%, Returned 10%, and Refunded 10%. The INR 299–24,999 amount range represents everyday items through higher-value electronics and home goods. The delay probability is 20%; the generated dataset has 14 delayed orders of 50 (28%).
 
-## Setup on Windows
+Observed category counts: Apparel 8, Electronics 10, Home 13, Footwear 6, Beauty 13. Observed status counts: Placed 9, Shipped 11, Delivered 21, Returned 5, Refunded 4. Each order includes the required record ID, category, status, amount, age in days, and delay flag.
 
-Run these commands from the project folder:
+Twelve fictional policy documents cover all required assignment topics. RAG implements 55-word fixed chunks with 12-word overlap and sentence chunks grouped up to 65 words. They use separate Chroma collections and local `all-MiniLM-L6-v2` embeddings. The agent uses the sentence collection.
 
-    py -3.14 -m venv .venv
-    .\.venv\Scripts\python.exe -m pip install --upgrade pip
-    .\.venv\Scripts\python.exe -m pip install -e .
+Calibration used five in-scope and two out-of-scope queries. Sentence top-1 scores were 0.575–0.826 in-scope and 0.232–0.354 out-of-scope; the measured midpoint threshold is **0.465**. Fixed-chunk scores were 0.583–0.826 in-scope and 0.236–0.485 out-of-scope; its midpoint threshold is **0.534**. An official/current-policy request is handled separately by a scope guard.
 
-The first embedding-model download requires internet. LLM calls are mocked and do not use the network.
+For the same five in-scope queries, both strategies averaged document-level Precision@3 **0.333** and Recall@3 **1.000**. The detailed per-query arithmetic is in `reports/retrieval_evaluation.md`. Sentence chunking is used because it kept those scores with 14 chunks versus 25 for fixed chunking and had a wider measured separation from unrelated queries.
 
-## Run and verify
+Order escalation is calculated as `0.70 × delayed_shipment + 0.30 × (days_since_created / 30)`, rounded to four decimals. The escalation threshold is **0.73**, the nearest-rank 80th percentile of generated order scores. `check_order_status(record_id)` returns the order status, INR value, score, and escalation decision.
 
-Build the two local indexes:
+## Part 2 — LangGraph agent
 
-    .\.venv\Scripts\python.exe src\nykaa_support\rag.py index
+The graph has eight nodes and a conditional route to order lookup, policy search, or no tool. Pydantic request and response models validate structured data. JSON conversation memory is stored by session. `eval/demo_memory.py` writes a transcript showing a grounded follow-up in one session and an empty starting history in a separate fresh session.
 
-Measure retrieval:
+Input guardrails mask email, Indian phone numbers, and card last-four values and block prompt-injection patterns. The output abstains when retrieval lacks sufficient evidence or a request asks for official/current policy.
 
-    .\.venv\Scripts\python.exe eval\measure_retrieval.py
+## Part 3 — API and evaluation
 
-Run the RAG-triad evaluation:
+FastAPI provides `GET /health` and `POST /chat` and `POST /ask`. Chat traces are JSON Lines in `outputs/traces.jsonl`; they include a trace ID, elapsed time, hashed session ID, and PII-masked message.
 
-    .\.venv\Scripts\python.exe eval\evaluate_rag_triad.py
+The 15-query RAG-triad report covers all 12 policy topics plus three unsupported or official-policy cases. The latest local deterministic MOCK_LLM judge run averaged **1.000 context relevance, 1.000 groundedness, and 1.000 answer relevance**. These are rubric checks, not human or external LLM judgments. See `reports/rag_triad_evaluation.md`.
 
-Run the API smoke check:
+## Part 4 — MCP and resilience
 
-    .\.venv\Scripts\python.exe tests\smoke_api.py
+`mcp_server.py` exposes `check_order_status` as a FastMCP tool. `mcp_client.py` starts a separate local server process and successfully calls it for two sample records.
 
-Start the API:
+`resilience.py` uses LangGraph’s SQLite saver at `data/checkpoints/checkpoints.sqlite`. It pauses after two nodes, resumes the same thread, and confirms the completed nodes were not rerun. It also demonstrates jittered exponential retries, a per-node timeout, and a global timeout. Results are recorded in `reports/resilience_demo.md`.
 
-    .\.venv\Scripts\python.exe -m uvicorn nykaa_support.api:app --reload
+## Setup and demonstrations
 
-Then open http://127.0.0.1:8000/docs for the local API interface.
+Run these commands from the project folder in PowerShell:
 
-Run the MCP client and resilience demonstration:
-
-    .\.venv\Scripts\python.exe src\nykaa_support\mcp_client.py
-    .\.venv\Scripts\python.exe src\nykaa_support\resilience.py
-
-## Recorded evaluation
-
-The retrieval evaluation reported top-1 accuracy, hit@3, and MRR of 1.000 for both chunking strategies on 20 labeled answerable questions. The selected similarity threshold was 0.39; 4 of 5 unsupported questions were rejected.
-
-The RAG-triad evaluation reported 15/15 passing checks for context relevance, answer relevance, and faithfulness. These deterministic checks measure selected reference facts; they are not human or LLM judgments. Reports are stored in `reports/`. Re-run the evaluations after changing the documents, data, retrieval, or response templates.
-
-## Data and submission
-
-Keep authored inputs such as the sample orders and knowledge-base documents in the repository. `.gitignore` excludes local environments and runtime artifacts such as indexes, checkpoints, memory, and traces.
-
-The public repository is available at [Rashika729/nykaa-support-capstone](https://github.com/Rashika729/nykaa-support-capstone). The `main` branch tracks `origin/main`.
-
+```powershell
+py -3.14 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\python.exe .\src\nykaa_support\dataset.py
+.\.venv\Scripts\python.exe .\src\nykaa_support\rag.py index
+.\.venv\Scripts\python.exe .\eval\measure_retrieval.py
+.\.venv\Scripts\python.exe .\eval\evaluate_rag_triad.py
+.\.venv\Scripts\python.exe .\eval\demo_memory.py
+.\.venv\Scripts\python.exe .\tests\smoke_api.py
+.\.venv\Scripts\python.exe .\src\nykaa_support\mcp_client.py
+.\.venv\Scripts\python.exe .\src\nykaa_support\resilience.py
+.\.venv\Scripts\python.exe -m uvicorn nykaa_support.api:app --reload

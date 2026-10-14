@@ -1,4 +1,4 @@
-﻿"""Deterministic, local RAG-triad evaluation for 15 labeled questions."""
+﻿"""Evaluate all 15 queries with a deterministic MOCK_LLM judge."""
 
 import json
 import re
@@ -15,154 +15,176 @@ QUERY_FILE = PROJECT_ROOT / "eval" / "queries.jsonl"
 KB_DIR = PROJECT_ROOT / "data" / "knowledge_base"
 REPORT_FILE = PROJECT_ROOT / "reports" / "rag_triad_evaluation.md"
 
-# Key facts were selected from the authored fictional KB documents.
-REFERENCE_FACTS = {
-    "q01": ["status processing"],
-    "q02": ["order ID"],
-    "q03": ["does not promise a delivery date"],
-    "q04": ["current status"],
-    "q05": ["cancellation review"],
-    "q06": ["cancellation review"],
-    "q07": ["cannot be cancelled automatically"],
-    "q08": ["cannot be cancelled automatically"],
-    "q09": ["cannot edit a delivery address"],
-    "q10": ["Do not collect a full address"],
-    "q11": ["7 calendar days after delivery"],
-    "q12": ["human review"],
-    "q13": ["cannot issue or promise refunds"],
-    "q14": ["cannot issue or promise refunds"],
-    "q15": ["human review"],
-}
+MOCK_LLM_JUDGE_PROMPT = """\
+You are the evaluation judge for a fictional e-commerce support demo.
+Score context relevance, groundedness, and answer relevance from 0 to 1.
+For answerable queries, check the expected source and expected facts against
+the retrieved source and agent answer. For unsupported queries, give full
+credit only when no source is cited and the agent clearly abstains or explains
+that official/current policy is out of scope. Do not use outside knowledge.
+Return one score for each metric.
+"""
 
 
 def normalize(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip().lower()
+    text = text.casefold().replace("%", " percent ")
+    text = text.replace("–", " to ").replace("—", " to ").replace("-", " ")
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
-def source_stems(sources: list[str]) -> set[str]:
-    return {Path(source).stem for source in sources}
+def fact_is_present(text: str, fact: str) -> bool:
+    normalized_text = f" {normalize(text)} "
+    normalized_fact = normalize(fact)
+    if f" {normalized_fact} " in normalized_text:
+        return True
+
+    variants = {
+        "cannot apply": ("cannot apply", "cannot be applied"),
+        "not a guaranteed": ("not a guaranteed", "not guaranteed"),
+        "12 month": ("12 month", "12 months"),
+    }
+    return any(
+        f" {normalize(variant)} " in normalized_text
+        for variant in variants.get(fact.casefold(), ())
+    )
+
+
+def is_clear_abstention(answer: str, route: str) -> bool:
+    normalized = normalize(answer)
+    if route == "scope":
+        return "not official" in normalized or "fictional demo rules" in normalized
+    return (
+        "could not find enough support" in normalized
+        or "could not verify" in normalized
+        or "ask a human" in normalized
+    )
+
+
+def mock_judge(query: dict, response, source_text: str) -> dict:
+    """Interpret MOCK_LLM_JUDGE_PROMPT using deterministic local checks."""
+    expected_source = query.get("expected_source")
+    sources = {Path(source).stem for source in response.sources}
+    answerable = query["answerable"]
+
+    if not answerable:
+        abstained = not response.sources and is_clear_abstention(
+            response.answer, response.route
+        )
+        return {
+            "context_relevance": int(not response.sources),
+            "groundedness": int(abstained),
+            "answer_relevance": int(abstained),
+        }
+
+    source_retrieved = expected_source in sources
+    facts = query.get("expected_facts", [])
+    facts_in_source = all(fact_is_present(source_text, fact) for fact in facts)
+    facts_in_answer = all(fact_is_present(response.answer, fact) for fact in facts)
+
+    return {
+        "context_relevance": int(source_retrieved),
+        "groundedness": int(
+            source_retrieved and facts_in_source and facts_in_answer
+        ),
+        "answer_relevance": int(facts_in_answer),
+    }
 
 
 def main() -> None:
     with QUERY_FILE.open(encoding="utf-8-sig") as query_file:
-        queries = [
-            json.loads(line)
-            for line in query_file
-            if line.strip()
-        ]
+        queries = [json.loads(line) for line in query_file if line.strip()]
 
-    selected = [
-        item for item in queries
-        if item["id"] in REFERENCE_FACTS
-        and item.get("expected_source") is not None
-    ]
-
-    if len(selected) != 15:
-        raise ValueError(
-            f"Expected 15 labeled evaluation questions; found {len(selected)}."
-        )
+    if len(queries) != 15:
+        raise ValueError(f"Expected 15 evaluation queries; found {len(queries)}.")
 
     results = []
-    for item in selected:
-        request = ChatRequest(
-            session_id=f"triad-{item['id']}",
-            message=item["question"],
-        )
-        response = run_agent(request)
+    for query in queries:
+        response = run_agent(ChatRequest(
+            session_id=f"triad-v2-{query['id']}",
+            message=query["question"],
+        ))
 
-        expected_source = item["expected_source"]
-        cited_sources = source_stems(response.sources)
-        expected_source_cited = expected_source in cited_sources
+        expected_source = query.get("expected_source")
+        source_text = ""
+        if expected_source:
+            source_path = KB_DIR / f"{expected_source}.md"
+            source_text = source_path.read_text(encoding="utf-8-sig")
 
-        facts = REFERENCE_FACTS[item["id"]]
-        answer_text = normalize(response.answer)
-        document_path = KB_DIR / f"{expected_source}.md"
-        document_text = normalize(
-            document_path.read_text(encoding="utf-8-sig")
-        )
-
-        answer_has_facts = all(
-            normalize(fact) in answer_text for fact in facts
-        )
-        source_supports_facts = all(
-            normalize(fact) in document_text for fact in facts
-        )
-
+        scores = mock_judge(query, response, source_text)
         results.append({
-            "id": item["id"],
-            "question": item["question"],
+            "id": query["id"],
+            "question": query["question"],
             "expected_source": expected_source,
-            "context_relevant": expected_source_cited,
-            "answer_relevant": answer_has_facts,
-            "faithful": (
-                expected_source_cited
-                and answer_has_facts
-                and source_supports_facts
-            ),
+            "route": response.route,
+            "sources": response.sources,
+            "answer": response.answer,
+            **scores,
         })
 
-    total = len(results)
-    metrics = {
-        "Context relevance": sum(r["context_relevant"] for r in results),
-        "Answer relevance": sum(r["answer_relevant"] for r in results),
-        "Faithfulness": sum(r["faithful"] for r in results),
+    metric_names = (
+        "context_relevance",
+        "groundedness",
+        "answer_relevance",
+    )
+    averages = {
+        metric: sum(row[metric] for row in results) / len(results)
+        for metric in metric_names
     }
 
     lines = [
         "# RAG-Triad Evaluation",
         "",
         f"Evaluated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
-        f"Questions: {total} labeled, answerable questions from `eval/queries.jsonl`.",
+        f"Queries: {len(results)} total; all 12 required KB topics plus 3 unsupported or official-policy cases.",
         "",
-        "## Results",
+        "## MOCK_LLM Judge Prompt",
         "",
-        "| Metric | Passing | Score |",
-        "|---|---:|---:|",
+        f"> {MOCK_LLM_JUDGE_PROMPT.strip().replace(chr(10), chr(10) + '> ')}",
+        "",
+        "The project has no LLM API calls. This deterministic local judge interprets the prompt using expected-source, expected-fact, and abstention checks.",
+        "",
+        "## Scores by query",
+        "",
+        "| ID | Route | Context relevance | Groundedness | Answer relevance | Cited source(s) |",
+        "|---|---|---:|---:|---:|---|",
     ]
 
-    for name, passing in metrics.items():
-        lines.append(f"| {name} | {passing}/{total} | {passing / total:.1%} |")
+    for row in results:
+        cited = ", ".join(row["sources"]) if row["sources"] else "None"
+        lines.append(
+            f"| {row['id']} | {row['route']} | {row['context_relevance']} "
+            f"| {row['groundedness']} | {row['answer_relevance']} | {cited} |"
+        )
 
     lines.extend([
         "",
-        "## How to read these scores",
+        "## Average scores",
         "",
-        "- **Context relevance:** the expected KB document appears in the agent's cited sources.",
-        "- **Answer relevance:** the answer includes every manually selected key fact for that question.",
-        "- **Faithfulness:** the expected source is cited and every checked fact appears in both the answer and that source document.",
-        "- These are deterministic checks for a MOCK_LLM demo, not human judgments or an LLM judge. They check selected facts rather than every possible claim.",
-        "- All policy documents contain fictional educational rules, not official or current Nykaa policy.",
+        "| Metric | Average across 15 queries |",
+        "|---|---:|",
+        f"| Context relevance | {averages['context_relevance']:.3f} |",
+        f"| Groundedness | {averages['groundedness']:.3f} |",
+        f"| Answer relevance | {averages['answer_relevance']:.3f} |",
         "",
-        "## Cases to review",
+        "## Demonstrated agent answers",
         "",
     ])
 
-    failures = [
-        result for result in results
-        if not (
-            result["context_relevant"]
-            and result["answer_relevant"]
-            and result["faithful"]
-        )
-    ]
-    if failures:
-        for result in failures:
-            failed_checks = [
-                name for name, key in (
-                    ("context", "context_relevant"),
-                    ("answer", "answer_relevant"),
-                    ("faithfulness", "faithful"),
-                )
-                if not result[key]
-            ]
-            lines.append(
-                f"- `{result['id']}` ({', '.join(failed_checks)}): "
-                f"{result['question']}"
-            )
-    else:
-        lines.append("- None.")
+    for row in results:
+        excerpt = re.sub(r"\s+", " ", row["answer"]).strip()
+        lines.append(f"- **{row['id']} — {row['question']}**")
+        lines.append(f"  - Scores: context {row['context_relevance']}, groundedness {row['groundedness']}, answer {row['answer_relevance']}.")
+        lines.append(f"  - Answer: {excerpt}")
 
-    REPORT_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    lines.extend([
+        "",
+        "All policy documents contain fictional educational rules, not official or current Nykaa policy.",
+        "",
+    ])
+
+    REPORT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    REPORT_FILE.write_text("\n".join(lines), encoding="utf-8")
     print("\n".join(lines))
 
 

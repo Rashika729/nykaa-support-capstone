@@ -1,29 +1,68 @@
-﻿# Retrieval Evaluation
+# Retrieval Calibration and Document-level Metrics
 
-## Setup
+Similarity is cosine similarity from normalized local MiniLM embeddings.
+P@3 and R@3 map the top-three chunks to parent documents and deduplicate them.
 
-- Embedding model: `sentence-transformers/all-MiniLM-L6-v2`
-- Vector store: persistent local ChromaDB at `data/chroma/`
-- Chunking strategies: fixed word windows (55 words, 12-word overlap) and paragraph grouping (65-word target)
-- Model loading: cached model files, offline mode
-- Evaluation command: `.\.venv\Scripts\python.exe eval\measure_retrieval.py`
+## Fixed chunking
 
-## Results
+### Top-1 similarity calibration
 
-The labeled set has 20 answerable policy questions and 5 unsupported questions.
+- q01 (in-scope): 0.583 — What is the return review window for a Beauty item in this demo?
+- q02 (in-scope): 0.826 — If a COD return is approved, how long may the mock refund take?
+- q03 (in-scope): 0.714 — What delivery estimate does the demo give for a remote destination?
+- q04 (in-scope): 0.661 — What conditions are checked for a reverse pickup review?
+- q05 (in-scope): 0.598 — What warranty review period is listed for Electronics in the simulation?
+- q13 (out-of-scope): 0.485 — What is the current stock price of Nykaa?
+- q14 (out-of-scope): 0.236 — What is the weather in Mumbai today?
+- q15 (official-policy edge case, not used to calibrate): 0.644 — What is Nykaa's official current return policy?
 
-| Strategy | Chunks indexed | Top-1 accuracy | Hit@3 | MRR | Selected threshold | Precision | Recall | F1 | Unsupported rejection |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Fixed windows | 22 | 1.000 | 1.000 | 1.000 | 0.39 | 0.952 | 1.000 | 0.976 | 0.800 |
-| Paragraph grouping | 12 | 1.000 | 1.000 | 1.000 | 0.39 | 0.952 | 1.000 | 0.976 | 0.800 |
+Observed in-scope range: 0.583–0.826.
+Observed out-of-scope range: 0.236–0.485.
+Selected threshold: (0.583 + 0.485) / 2 = **0.534**.
+The observed calibration values have a separating gap.
 
-The threshold was selected by sweeping values from 0.00 to 1.00 in 0.01 steps and choosing the value with the best F1 score, then precision.
+### Document-level Precision@3 and Recall@3
 
-## Manual checks
+- q01: retrieved ['01-return-window-by-category', '04-reverse-pickup-eligibility', '10-damaged-item-claims']; relevant ['01-return-window-by-category']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+- q02: retrieved ['02-cod-refund-timelines', '01-return-window-by-category']; relevant ['02-cod-refund-timelines']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+- q03: retrieved ['03-delivery-slas', '10-damaged-item-claims', '11-international-shipping-restrictions']; relevant ['03-delivery-slas']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+- q04: retrieved ['04-reverse-pickup-eligibility', '05-warranty-by-category', '10-damaged-item-claims']; relevant ['04-reverse-pickup-eligibility']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+- q05: retrieved ['05-warranty-by-category', '01-return-window-by-category']; relevant ['05-warranty-by-category']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
 
-- “How do I request a refund?” retrieved `07-refund-timing.md` at similarity 0.561.
-- “Tell me the official current Nykaa return policy.” was rejected by the scope guard with an abstention message.
+Average Precision@3: **0.333**.
+Average Recall@3: **1.000**.
+Indexed chunks: 25.
 
-## Limits
+## Sentence chunking
 
-This is a small, hand-written synthetic evaluation set. Both strategies scored identically on these questions; that does not prove that they perform equally on real customer questions. One of five unsupported queries scored above the similarity threshold, so the threshold alone is not a reliable safety check. The retrieval code includes a specific guard for official or current Nykaa policy requests. Broader guardrails and the separate RAG-triad evaluation remain to be implemented.
+### Top-1 similarity calibration
+
+- q01 (in-scope): 0.575 — What is the return review window for a Beauty item in this demo?
+- q02 (in-scope): 0.826 — If a COD return is approved, how long may the mock refund take?
+- q03 (in-scope): 0.666 — What delivery estimate does the demo give for a remote destination?
+- q04 (in-scope): 0.587 — What conditions are checked for a reverse pickup review?
+- q05 (in-scope): 0.609 — What warranty review period is listed for Electronics in the simulation?
+- q13 (out-of-scope): 0.354 — What is the current stock price of Nykaa?
+- q14 (out-of-scope): 0.232 — What is the weather in Mumbai today?
+- q15 (official-policy edge case, not used to calibrate): 0.555 — What is Nykaa's official current return policy?
+
+Observed in-scope range: 0.575–0.826.
+Observed out-of-scope range: 0.232–0.354.
+Selected threshold: (0.575 + 0.354) / 2 = **0.465**.
+The observed calibration values have a separating gap.
+
+### Document-level Precision@3 and Recall@3
+
+- q01: retrieved ['01-return-window-by-category', '04-reverse-pickup-eligibility', '10-damaged-item-claims']; relevant ['01-return-window-by-category']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+- q02: retrieved ['02-cod-refund-timelines', '01-return-window-by-category', '03-delivery-slas']; relevant ['02-cod-refund-timelines']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+- q03: retrieved ['03-delivery-slas', '10-damaged-item-claims', '11-international-shipping-restrictions']; relevant ['03-delivery-slas']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+- q04: retrieved ['04-reverse-pickup-eligibility', '12-customer-support-escalation-matrix', '06-order-cancellation']; relevant ['04-reverse-pickup-eligibility']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+- q05: retrieved ['05-warranty-by-category', '01-return-window-by-category', '02-cod-refund-timelines']; relevant ['05-warranty-by-category']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+
+Average Precision@3: **0.333**.
+Average Recall@3: **1.000**.
+Indexed chunks: 14.
+
+## Recommendation
+
+Deploy sentence chunking: its five-query averages were Precision@3 0.333 and Recall@3 1.000, compared with 0.333 and 1.000 for fixed. Sentence also showed an in-scope minimum of 0.575 above an out-of-scope maximum of 0.354, allowing a measured threshold of 0.465.

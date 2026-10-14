@@ -1,4 +1,4 @@
-﻿"""Six-node LangGraph support agent using deterministic local behavior."""
+"""Six-node LangGraph support agent using deterministic local behavior."""
 
 from __future__ import annotations
 
@@ -16,13 +16,14 @@ import chromadb
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
+from nykaa_support.dataset import check_order_status
 
 ROOT = Path(__file__).resolve().parents[2]
 ORDERS_FILE = ROOT / "data" / "orders.csv"
 DB_DIR = ROOT / "data" / "chroma"
 MEMORY_DIR = ROOT / "data" / "memory"
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-SIMILARITY_THRESHOLD = 0.39
+SIMILARITY_THRESHOLD = 0.465
 
 
 class ChatRequest(BaseModel):
@@ -64,16 +65,21 @@ class AgentState(TypedDict, total=False):
 
 
 def mask_pii(text: str) -> str:
-    """Mask common email addresses and Indian mobile numbers."""
+    """Mask email addresses, Indian mobile numbers, and card last-four values."""
     text = re.sub(
         r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
         "[REDACTED_EMAIL]",
         text,
         flags=re.IGNORECASE,
     )
-    return re.sub(
-        r"(?<!\d)(?:\+91[\s-]?)?[6-9]\d{9}(?!\d)",
+    text = re.sub(
+        r"(?<!\d)(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}(?!\d)",
         "[REDACTED_PHONE]",
+        text,
+    )
+    return re.sub(
+        r"(?i)\b(?:card(?:\s*(?:number|no\.?|ending|last\s*4|last\s*four))?|last\s*4(?:\s*of\s*(?:the\s*)?card)?)\s*(?:ending\s*(?:in\s*)?|is\s*|[:#-]\s*)?(\d{4})\b",
+        "[REDACTED_CARD_LAST4]",
         text,
     )
 
@@ -118,7 +124,7 @@ def embedding_model() -> SentenceTransformer:
 
 def retrieve_policy(question: str) -> list[dict]:
     client = chromadb.PersistentClient(path=str(DB_DIR))
-    collection = client.get_collection(name="nykaa_kb_fixed_chunks")
+    collection = client.get_collection(name="nykaa_kb_sentence_chunks")
     vector = embedding_model().encode(
         [question], normalize_embeddings=True
     )[0].tolist()
@@ -192,27 +198,25 @@ def deterministic_tools(state: AgentState) -> dict:
                 "tools_called": tools_called,
             }
 
-        with ORDERS_FILE.open(encoding="utf-8-sig", newline="") as file:
-            order = next(
-                (row for row in csv.DictReader(file) if row["order_id"] == order_id),
-                None,
-            )
-
-        if order is None:
+        order = check_order_status(order_id)
+        if not order.get("found"):
             result = {"kind": "not_found", "order_id": order_id}
         else:
-            # Deliberately omit customer name, email, and payment details.
-            result = {
-                "kind": "found",
-                "order_id": order_id,
-                "status": order["status"],
-                "tracking_id": order["tracking_id"],
-            }
+            result = {"kind": "found", "order_id": order_id, **order}
         return {"order_result": result, "tools_called": tools_called}
-
     if route == "knowledge":
         tools_called.append("policy_search")
-        evidence = retrieve_policy(state["safe_message"])
+        history = state.get("history", [])
+        previous_question = next(
+            (
+                turn.get("content", "")
+                for turn in reversed(history)
+                if turn.get("role") == "user"
+            ),
+            "",
+        )
+        retrieval_query = f"{previous_question} {state['safe_message']}".strip()
+        evidence = retrieve_policy(retrieval_query)
         return {
             "evidence": evidence,
             "sources": [item["source"] for item in evidence],
@@ -222,7 +226,17 @@ def deterministic_tools(state: AgentState) -> dict:
     if route == "escalation":
         tools_called.append("human_escalation_router")
         tools_called.append("policy_search")
-        evidence = retrieve_policy(state["safe_message"])
+        history = state.get("history", [])
+        previous_question = next(
+            (
+                turn.get("content", "")
+                for turn in reversed(history)
+                if turn.get("role") == "user"
+            ),
+            "",
+        )
+        retrieval_query = f"{previous_question} {state['safe_message']}".strip()
+        evidence = retrieve_policy(retrieval_query)
         return {
             "evidence": evidence,
             "sources": [item["source"] for item in evidence],
@@ -240,6 +254,13 @@ def escalation_score(state: AgentState) -> dict:
         "cancel",
     )
 
+    order_result = state.get("order_result") or {}
+    if order_result.get("kind") == "found":
+        score = round(float(order_result["escalation_score"]) * 100)
+        return {
+            "escalation_score": score,
+            "escalation_required": bool(order_result["escalation_required"]),
+        }
     if any(term in message for term in urgent_terms):
         score = 95
     elif state.get("route") == "escalation" or any(
@@ -347,18 +368,51 @@ def persist_memory(state: AgentState) -> dict:
     return {"response": response.model_dump()}
 
 
+def choose_tool_node(state: AgentState) -> str:
+    """Choose the graph branch that matches the routed request."""
+    if state.get("route") == "order":
+        return "order_lookup"
+    if state.get("route") in ("knowledge", "escalation"):
+        return "policy_search"
+    return "skip_tools"
+
+
+def order_lookup_node(state: AgentState) -> dict:
+    return deterministic_tools(state)
+
+
+def policy_search_node(state: AgentState) -> dict:
+    return deterministic_tools(state)
+
+
+def skip_tools_node(state: AgentState) -> dict:
+    return deterministic_tools(state)
+
+
 builder = StateGraph(AgentState)
 builder.add_node("input_guard", input_guard)
 builder.add_node("request_router", request_router)
-builder.add_node("deterministic_tools", deterministic_tools)
+builder.add_node("order_lookup", order_lookup_node)
+builder.add_node("policy_search", policy_search_node)
+builder.add_node("skip_tools", skip_tools_node)
 builder.add_node("escalation_score", escalation_score)
 builder.add_node("mock_llm_response", mock_llm_response)
 builder.add_node("persist_memory", persist_memory)
 
 builder.add_edge(START, "input_guard")
 builder.add_edge("input_guard", "request_router")
-builder.add_edge("request_router", "deterministic_tools")
-builder.add_edge("deterministic_tools", "escalation_score")
+builder.add_conditional_edges(
+    "request_router",
+    choose_tool_node,
+    {
+        "order_lookup": "order_lookup",
+        "policy_search": "policy_search",
+        "skip_tools": "skip_tools",
+    },
+)
+builder.add_edge("order_lookup", "escalation_score")
+builder.add_edge("policy_search", "escalation_score")
+builder.add_edge("skip_tools", "escalation_score")
 builder.add_edge("escalation_score", "mock_llm_response")
 builder.add_edge("mock_llm_response", "persist_memory")
 builder.add_edge("persist_memory", END)
@@ -382,10 +436,3 @@ if __name__ == "__main__":
         {"session_id": "demo-session", "message": "Can I get a refund?"}
     )
     print(demo.model_dump_json(indent=2))
-
-
-
-
-
-
-

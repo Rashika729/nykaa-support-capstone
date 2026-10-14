@@ -1,7 +1,9 @@
-﻿"""FastAPI endpoints for the Nykaa support agent demo."""
+"""FastAPI endpoints for the Nykaa support agent demo."""
 
 import hashlib
 import json
+import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,7 +33,10 @@ def health() -> dict:
 
 
 @app.post("/chat", response_model=ChatResponse)
+@app.post("/ask", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
+    started_at = time.perf_counter()
+    trace_id = uuid.uuid4().hex
     """Run one support-agent turn and write a PII-safe trace."""
     try:
         response = run_agent(request)
@@ -47,6 +52,8 @@ def chat(request: ChatRequest) -> ChatResponse:
 
     trace = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "trace_id": trace_id,
+        "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
         "session_hash": session_hash,
         "message": mask_pii(request.message),
         "route": response.route,

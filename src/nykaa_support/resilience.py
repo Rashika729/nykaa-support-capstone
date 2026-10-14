@@ -15,18 +15,28 @@ from langgraph.types import Command, RetryPolicy, TimeoutPolicy, interrupt
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-CHECKPOINT_FILE = PROJECT_ROOT / "data" / "checkpoints" / "resilience.sqlite"
+CHECKPOINT_FILE = PROJECT_ROOT / "data" / "checkpoints" / "checkpoints.sqlite"
 REPORT_FILE = PROJECT_ROOT / "reports" / "resilience_demo.md"
+
+NODE_RUNS = {
+    "prepare_review": 0,
+    "validate_review_context": 0,
+    "wait_for_review": 0,
+    "finish_review": 0,
+}
 
 
 class ApprovalState(TypedDict, total=False):
     issue: str
     draft: str
+    context_validated: bool
     decision: dict
     outcome: str
 
 
 def prepare_review(state: ApprovalState) -> dict:
+    NODE_RUNS["prepare_review"] += 1
+    print(f"Node prepare_review run {NODE_RUNS['prepare_review']}")
     return {
         "draft": (
             "Human review requested for this fictional capstone issue: "
@@ -35,16 +45,27 @@ def prepare_review(state: ApprovalState) -> dict:
     }
 
 
+def validate_review_context(state: ApprovalState) -> dict:
+    NODE_RUNS["validate_review_context"] += 1
+    print(
+        "Node validate_review_context run "
+        f"{NODE_RUNS['validate_review_context']}"
+    )
+    return {"context_validated": bool(state.get("draft"))}
+
+
 def wait_for_review(state: ApprovalState) -> dict:
-    # LangGraph checkpoints here and pauses until Command(resume=...) is given.
+    NODE_RUNS["wait_for_review"] += 1
     decision = interrupt({
         "question": "Approve this simulated escalation?",
         "draft": state["draft"],
+        "context_validated": state["context_validated"],
     })
     return {"decision": decision}
 
 
 def finish_review(state: ApprovalState) -> dict:
+    NODE_RUNS["finish_review"] += 1
     approved = state.get("decision", {}).get("approved") is True
     outcome = "approved for human follow-up" if approved else "not approved"
     return {"outcome": outcome}
@@ -74,7 +95,7 @@ async def demonstrate_retry() -> int:
             backoff_factor=2.0,
             max_interval=0.04,
             max_attempts=3,
-            jitter=False,
+            jitter=True,
             retry_on=RuntimeError,
         ),
     )
@@ -85,7 +106,7 @@ async def demonstrate_retry() -> int:
     result = await graph.ainvoke({})
     assert result["result"] == "succeeded after a temporary failure", result
     assert attempt_counter["count"] == 3, attempt_counter
-    print("PASS: transient operation succeeded on attempt 3 with exponential backoff.")
+    print("PASS: transient operation succeeded on attempt 3 with jittered exponential backoff.")
     return attempt_counter["count"]
 
 
@@ -146,23 +167,22 @@ async def main() -> None:
 
     approval_builder = StateGraph(ApprovalState)
     approval_builder.add_node("prepare_review", prepare_review)
+    approval_builder.add_node("validate_review_context", validate_review_context)
     approval_builder.add_node("wait_for_review", wait_for_review)
     approval_builder.add_node("finish_review", finish_review)
     approval_builder.add_edge(START, "prepare_review")
-    approval_builder.add_edge("prepare_review", "wait_for_review")
+    approval_builder.add_edge("prepare_review", "validate_review_context")
+    approval_builder.add_edge("validate_review_context", "wait_for_review")
     approval_builder.add_edge("wait_for_review", "finish_review")
     approval_builder.add_edge("finish_review", END)
 
-    connection = sqlite3.connect(
-        str(CHECKPOINT_FILE),
-        check_same_thread=False,
-    )
+    connection = sqlite3.connect(str(CHECKPOINT_FILE), check_same_thread=False)
     try:
         checkpointer = SqliteSaver(connection)
         approval_graph = approval_builder.compile(checkpointer=checkpointer)
         config = {
             "configurable": {
-                "thread_id": "capstone-resilience-demo",
+                "thread_id": "capstone-resilience-demo-v2",
             }
         }
 
@@ -173,14 +193,38 @@ async def main() -> None:
         assert paused.get("__interrupt__"), paused
         checkpoint = approval_graph.get_state(config)
         assert "wait_for_review" in checkpoint.next, checkpoint.next
-        print("PASS: SQLite checkpoint saved; graph paused for review.")
+        assert NODE_RUNS["prepare_review"] == 1, NODE_RUNS
+        assert NODE_RUNS["validate_review_context"] == 1, NODE_RUNS
+
+        counts_before_resume = dict(NODE_RUNS)
+        print("SQLite checkpoint state before resume:", checkpoint.values)
+        print("Next node at interruption:", checkpoint.next)
+        print(
+            "Completed-node counts before resume:",
+            {
+                "prepare_review": NODE_RUNS["prepare_review"],
+                "validate_review_context": NODE_RUNS["validate_review_context"],
+            },
+        )
 
         resumed = approval_graph.invoke(
             Command(resume={"approved": True, "reviewer": "demo-reviewer"}),
             config=config,
         )
         assert resumed["outcome"] == "approved for human follow-up", resumed
-        print("PASS: graph resumed from SQLite and completed the review.")
+        assert NODE_RUNS["prepare_review"] == counts_before_resume["prepare_review"]
+        assert (
+            NODE_RUNS["validate_review_context"]
+            == counts_before_resume["validate_review_context"]
+        )
+        assert NODE_RUNS["finish_review"] == 1, NODE_RUNS
+        print("PASS: the same SQLite thread resumed and completed the review.")
+        print("Completed-node counts after resume:", {
+            "prepare_review": NODE_RUNS["prepare_review"],
+            "validate_review_context": NODE_RUNS["validate_review_context"],
+        })
+        print("Finish node count after resume:", NODE_RUNS["finish_review"])
+        print("PASS: completed nodes were restored from the checkpoint, not rerun.")
     finally:
         connection.close()
 
@@ -190,12 +234,13 @@ async def main() -> None:
 
     report = f"""# Resilience Demonstration
 
-- SQLite checkpoint file: `data/checkpoints/resilience.sqlite`
-- Interruption: approval node paused and saved state with a stable thread ID.
-- Resume: the same graph and thread resumed with a demo approval.
-- Retries: transient tool succeeded after {retry_attempts} attempts; configured initial interval 0.02s, backoff factor 2.0, maximum interval 0.04s.
-- Per-node timeout: async `slow_node` used a 0.05s run timeout.
-- Global run timeout: `asyncio.wait_for` capped a separate graph run at 0.05s.
+- SQLite checkpoint file: `data/checkpoints/checkpoints.sqlite`
+- Stable thread ID: `capstone-resilience-demo-v2`.
+- Before interruption, `prepare_review` and `validate_review_context` each ran once; the graph paused at `wait_for_review`.
+- Resume used the same thread ID. Execution counters stayed at one for both completed nodes, while `finish_review` ran once.
+- Retry: transient tool succeeded after {retry_attempts} attempts. Configuration: initial interval 0.02 seconds, backoff factor 2, maximum interval 0.04 seconds, three maximum attempts, jitter enabled.
+- Per-node timeout: simulated `slow_node` uses a 0.05-second run timeout.
+- Global timeout: `asyncio.wait_for` caps a separate graph run at 0.05 seconds.
 - All calls used local code and fictional data; no LLM API or credentials were used.
 """
     REPORT_FILE.write_text(report, encoding="utf-8")
