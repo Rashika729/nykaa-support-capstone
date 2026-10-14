@@ -1,0 +1,25 @@
+﻿{"id":"q01","question":"What status does a new order start with?","expected_source":"01-order-confirmation"}
+{"id":"q02","question":"How do I check a specific order?","expected_source":"01-order-confirmation"}
+{"id":"q03","question":"Can you guarantee when my package will arrive?","expected_source":"02-delivery-estimates"}
+{"id":"q04","question":"Where can I check the current delivery status?","expected_source":"02-delivery-estimates"}
+{"id":"q05","question":"Can I cancel an order that is still processing?","expected_source":"03-cancel-before-shipping"}
+{"id":"q06","question":"What should I do if I want to stop an order before it ships?","expected_source":"03-cancel-before-shipping"}
+{"id":"q07","question":"Can I cancel my order after it has shipped?","expected_source":"04-cancel-after-shipping"}
+{"id":"q08","question":"Can you stop a package that is out for delivery?","expected_source":"04-cancel-after-shipping"}
+{"id":"q09","question":"Can I change the delivery address?","expected_source":"05-address-changes"}
+{"id":"q10","question":"Should I send you my new address in this chat?","expected_source":"05-address-changes"}
+{"id":"q11","question":"How long after delivery can I request a return in this demo?","expected_source":"06-return-window"}
+{"id":"q12","question":"Who decides whether a return is accepted?","expected_source":"06-return-window"}
+{"id":"q13","question":"Can this agent issue a refund?","expected_source":"07-refund-timing"}
+{"id":"q14","question":"When will my refund reach my bank?","expected_source":"07-refund-timing"}
+{"id":"q15","question":"My product arrived damaged. What should I do?","expected_source":"08-damaged-items"}
+{"id":"q16","question":"One item was missing from my delivered parcel. Can you verify that?","expected_source":"09-missing-items"}
+{"id":"q17","question":"Which payment methods can appear in the sample orders?","expected_source":"10-payment-methods"}
+{"id":"q18","question":"Can I tell the support agent my one-time payment code?","expected_source":"10-payment-methods"}
+{"id":"q19","question":"What coupon codes are active today?","expected_source":"11-promotions"}
+{"id":"q20","question":"Who should handle a payment dispute or safety complaint?","expected_source":"12-human-escalation"}
+{"id":"q21","question":"What is the weather in Mumbai today?","expected_source":null}
+{"id":"q22","question":"What is the current stock price of Nykaa?","expected_source":null}
+{"id":"q23","question":"Tell me the official current Nykaa return policy.","expected_source":null}
+{"id":"q24","question":"Recommend a foundation shade for my skin tone.","expected_source":null}
+{"id":"q25","question":"What is the score in todays cricket match?","expected_source":null}

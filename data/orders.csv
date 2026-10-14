@@ -1,0 +1,49 @@
+order_id,customer_name,email,product_sku,product_name,category,quantity,amount_inr,order_date,status,payment_method,tracking_id
+NK000001,Sample Customer 001,customer001@example.test,SKN-101,Hydrating Face Cleanser,skincare,1,599,2026-09-01,processing,UPI,
+NK000002,Sample Customer 002,customer002@example.test,SKN-205,Vitamin C Serum,skincare,2,1472,2026-09-02,shipped,card,TRK00000002
+NK000003,Sample Customer 003,customer003@example.test,MKE-110,Matte Lip Color,makeup,3,2619,2026-09-03,out_for_delivery,cash_on_delivery,TRK00000003
+NK000004,Sample Customer 004,customer004@example.test,HAI-301,Nourishing Hair Mask,haircare,1,1010,2026-09-04,delivered,wallet,TRK00000004
+NK000005,Sample Customer 005,customer005@example.test,FRA-044,Floral Eau de Parfum,fragrance,2,2294,2026-09-05,cancelled,UPI,
+NK000006,Sample Customer 006,customer006@example.test,WEL-071,Daily Wellness Gummies,wellness,3,3852,2026-09-06,returned,card,
+NK000007,Sample Customer 007,customer007@example.test,SKN-101,Hydrating Face Cleanser,skincare,1,1421,2026-09-07,processing,cash_on_delivery,
+NK000008,Sample Customer 008,customer008@example.test,SKN-205,Vitamin C Serum,skincare,2,3116,2026-09-08,shipped,wallet,TRK00000008
+NK000009,Sample Customer 009,customer009@example.test,MKE-110,Matte Lip Color,makeup,3,5085,2026-09-09,out_for_delivery,UPI,TRK00000009
+NK000010,Sample Customer 010,customer010@example.test,HAI-301,Nourishing Hair Mask,haircare,1,1832,2026-09-10,delivered,card,TRK00000010
+NK000011,Sample Customer 011,customer011@example.test,FRA-044,Floral Eau de Parfum,fragrance,2,3938,2026-09-11,cancelled,cash_on_delivery,
+NK000012,Sample Customer 012,customer012@example.test,WEL-071,Daily Wellness Gummies,wellness,3,6318,2026-09-12,returned,wallet,
+NK000013,Sample Customer 013,customer013@example.test,SKN-101,Hydrating Face Cleanser,skincare,1,2243,2026-09-13,processing,UPI,
+NK000014,Sample Customer 014,customer014@example.test,SKN-205,Vitamin C Serum,skincare,2,4760,2026-09-14,shipped,card,TRK00000014
+NK000015,Sample Customer 015,customer015@example.test,MKE-110,Matte Lip Color,makeup,3,7551,2026-09-15,out_for_delivery,cash_on_delivery,TRK00000015
+NK000016,Sample Customer 016,customer016@example.test,HAI-301,Nourishing Hair Mask,haircare,1,2654,2026-09-16,delivered,wallet,TRK00000016
+NK000017,Sample Customer 017,customer017@example.test,FRA-044,Floral Eau de Parfum,fragrance,2,5582,2026-09-17,cancelled,UPI,
+NK000018,Sample Customer 018,customer018@example.test,WEL-071,Daily Wellness Gummies,wellness,3,8784,2026-09-18,returned,card,
+NK000019,Sample Customer 019,customer019@example.test,SKN-101,Hydrating Face Cleanser,skincare,1,3065,2026-09-19,processing,cash_on_delivery,
+NK000020,Sample Customer 020,customer020@example.test,SKN-205,Vitamin C Serum,skincare,2,6404,2026-09-20,shipped,wallet,TRK00000020
+NK000021,Sample Customer 021,customer021@example.test,MKE-110,Matte Lip Color,makeup,3,10017,2026-09-21,out_for_delivery,UPI,TRK00000021
+NK000022,Sample Customer 022,customer022@example.test,HAI-301,Nourishing Hair Mask,haircare,1,3476,2026-09-22,delivered,card,TRK00000022
+NK000023,Sample Customer 023,customer023@example.test,FRA-044,Floral Eau de Parfum,fragrance,2,7226,2026-09-23,cancelled,cash_on_delivery,
+NK000024,Sample Customer 024,customer024@example.test,WEL-071,Daily Wellness Gummies,wellness,3,11250,2026-09-24,returned,wallet,
+NK000025,Sample Customer 025,customer025@example.test,SKN-101,Hydrating Face Cleanser,skincare,1,3887,2026-09-25,processing,UPI,
+NK000026,Sample Customer 026,customer026@example.test,SKN-205,Vitamin C Serum,skincare,2,8048,2026-09-26,shipped,card,TRK00000026
+NK000027,Sample Customer 027,customer027@example.test,MKE-110,Matte Lip Color,makeup,3,12483,2026-09-27,out_for_delivery,cash_on_delivery,TRK00000027
+NK000028,Sample Customer 028,customer028@example.test,HAI-301,Nourishing Hair Mask,haircare,1,4298,2026-09-28,delivered,wallet,TRK00000028
+NK000029,Sample Customer 029,customer029@example.test,FRA-044,Floral Eau de Parfum,fragrance,2,8870,2026-09-29,cancelled,UPI,
+NK000030,Sample Customer 030,customer030@example.test,WEL-071,Daily Wellness Gummies,wellness,3,13716,2026-09-30,returned,card,
+NK000031,Sample Customer 031,customer031@example.test,SKN-101,Hydrating Face Cleanser,skincare,1,4709,2026-09-01,processing,cash_on_delivery,
+NK000032,Sample Customer 032,customer032@example.test,SKN-205,Vitamin C Serum,skincare,2,9692,2026-09-02,shipped,wallet,TRK00000032
+NK000033,Sample Customer 033,customer033@example.test,MKE-110,Matte Lip Color,makeup,3,14949,2026-09-03,out_for_delivery,UPI,TRK00000033
+NK000034,Sample Customer 034,customer034@example.test,HAI-301,Nourishing Hair Mask,haircare,1,5120,2026-09-04,delivered,card,TRK00000034
+NK000035,Sample Customer 035,customer035@example.test,FRA-044,Floral Eau de Parfum,fragrance,2,10514,2026-09-05,cancelled,cash_on_delivery,
+NK000036,Sample Customer 036,customer036@example.test,WEL-071,Daily Wellness Gummies,wellness,3,16182,2026-09-06,returned,wallet,
+NK000037,Sample Customer 037,customer037@example.test,SKN-101,Hydrating Face Cleanser,skincare,1,5531,2026-09-07,processing,UPI,
+NK000038,Sample Customer 038,customer038@example.test,SKN-205,Vitamin C Serum,skincare,2,11336,2026-09-08,shipped,card,TRK00000038
+NK000039,Sample Customer 039,customer039@example.test,MKE-110,Matte Lip Color,makeup,3,17415,2026-09-09,out_for_delivery,cash_on_delivery,TRK00000039
+NK000040,Sample Customer 040,customer040@example.test,HAI-301,Nourishing Hair Mask,haircare,1,5942,2026-09-10,delivered,wallet,TRK00000040
+NK000041,Sample Customer 041,customer041@example.test,FRA-044,Floral Eau de Parfum,fragrance,2,12158,2026-09-11,cancelled,UPI,
+NK000042,Sample Customer 042,customer042@example.test,WEL-071,Daily Wellness Gummies,wellness,3,18648,2026-09-12,returned,card,
+NK000043,Sample Customer 043,customer043@example.test,SKN-101,Hydrating Face Cleanser,skincare,1,6353,2026-09-13,processing,cash_on_delivery,
+NK000044,Sample Customer 044,customer044@example.test,SKN-205,Vitamin C Serum,skincare,2,12980,2026-09-14,shipped,wallet,TRK00000044
+NK000045,Sample Customer 045,customer045@example.test,MKE-110,Matte Lip Color,makeup,3,19881,2026-09-15,out_for_delivery,UPI,TRK00000045
+NK000046,Sample Customer 046,customer046@example.test,HAI-301,Nourishing Hair Mask,haircare,1,6764,2026-09-16,delivered,card,TRK00000046
+NK000047,Sample Customer 047,customer047@example.test,FRA-044,Floral Eau de Parfum,fragrance,2,13802,2026-09-17,cancelled,cash_on_delivery,
+NK000048,Sample Customer 048,customer048@example.test,WEL-071,Daily Wellness Gummies,wellness,3,21114,2026-09-18,returned,wallet,

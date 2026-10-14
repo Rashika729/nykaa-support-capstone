@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nykaa-domain-support-agent"
+version = "0.1.0"
+description = "A fictional, local-only Nykaa support-agent capstone using MOCK_LLM."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "chromadb>=1.5,<2",
+    "sentence-transformers>=6.1,<7",
+    "langgraph>=1.2,<2",
+    "langgraph-checkpoint-sqlite>=3.1,<4",
+    "fastapi>=0.143,<1",
+    "uvicorn>=0.30,<1",
+    "fastmcp>=4.1,<5",
+    "pydantic>=2.9,<3",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

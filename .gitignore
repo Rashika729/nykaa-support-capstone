@@ -1,0 +1,12 @@
+﻿.venv/
+__pycache__/
+*.py[cod]
+.env
+data/chroma*/
+data/checkpoints/*.sqlite*
+outputs/*.jsonl
+memory/*.json
+*.egg-info/
+build/
+dist/
+data/memory/*.json
