@@ -61,3 +61,5 @@ py -3.14 -m venv .venv
 ## Privacy limitations
 
 Any customer names and delivery addresses in examples are fabricated. Names and delivery addresses are free text and are outside this demo's reliable masking scope. The input guardrail masks fixed-format phone numbers and payment-card last-four values.
+
+See the [request sequence diagram](docs/sequence-diagram.md) for the main data flow.
