@@ -18,13 +18,13 @@ Twelve fictional policy documents cover all required assignment topics. RAG impl
 
 Calibration used five in-scope and two out-of-scope queries. Sentence top-1 scores were 0.575–0.826 in-scope and 0.232–0.354 out-of-scope; the measured midpoint threshold is **0.465**. Fixed-chunk scores were 0.583–0.826 in-scope and 0.236–0.485 out-of-scope; its midpoint threshold is **0.534**. An official/current-policy request is handled separately by a scope guard.
 
-On the same five in-scope queries, fixed and sentence chunking both averaged document-level Precision@3 of **0.333** and Recall@3 of **1.000**. I chose sentence chunking for the agent because it indexed 14 chunks instead of 25 and showed a wider measured gap between in-scope and unrelated queries. The per-query calculations for both strategies are in `reports/retrieval_evaluation.md`.
+On the same five in-scope queries, fixed and sentence chunking both averaged document-level Precision@3 of **0.333** and Recall@3 of **1.000**. Both strategies also averaged Precision@1 of 1.000 and Hit@3 of 1.000. Precision@3 is 0.333 because each query has one labeled relevant source and the metric counts three distinct retrieved documents. I chose sentence chunking for the agent because it indexed 14 chunks instead of 25 and showed a wider measured gap between in-scope and unrelated queries. The per-query calculations for both strategies are in `reports/retrieval_evaluation.md`.
 
 Order escalation is calculated as `0.70 × delayed_shipment + 0.30 × (days_since_created / 30)`, rounded to four decimals. I set the escalation threshold to **0.73**, the nearest-rank 80th percentile of scores in this generated dataset. `check_order_status(record_id)` returns the order status, INR value, score, and escalation decision.
 
 ## Part 2 — LangGraph agent
 
-The graph has eight nodes and a conditional route to order lookup, policy search, or no tool. Pydantic request and response models validate structured data. JSON conversation memory is stored by session. The support graph also uses a SQLite checkpointer at `data/checkpoints/checkpoints.sqlite`, keyed by session ID; messages are masked before entering checkpointed state. `eval/demo_memory.py` writes a transcript showing a grounded follow-up in one session and an empty starting history in a separate fresh session.
+The graph has eight nodes and uses deterministic routing for order lookup, policy search, escalation, blocked requests, and official/current-policy scope requests. Pydantic request and response models validate structured data. JSON conversation memory is stored by session. The support graph also uses a SQLite checkpointer at `data/checkpoints/checkpoints.sqlite`, keyed by session ID; messages are masked before entering checkpointed state. `eval/demo_memory.py` writes a transcript showing a grounded follow-up in one session and an empty starting history in a separate fresh session.
 
 Input guardrails mask email, Indian phone numbers, and card last-four values and block prompt-injection patterns. The output abstains when retrieval lacks sufficient evidence or a request asks for official/current policy.
 
@@ -41,11 +41,12 @@ I evaluated 15 queries covering all 12 policy topics and three unsupported or of
 `resilience.py` uses LangGraph’s SQLite saver at `data/checkpoints/checkpoints.sqlite`. It demonstrates pause/resume on the support-agent graph: `input_guard`, `request_router`, and `order_lookup` complete before the pause, and execution resumes at `escalation_score` without rerunning them. A separate approval-flow graph also demonstrates same-thread resume. The script demonstrates jittered exponential retries, a per-node timeout, and a global timeout. Results are recorded in `reports/resilience_demo.md`.
 
 ## Setup and demonstrations
+Requires Python 3.11 or newer.
 
 Run these commands from the project folder in PowerShell:
 
 ```powershell
-py -3.14 -m venv .venv
+py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -e .
 .\.venv\Scripts\python.exe .\src\nykaa_support\dataset.py
@@ -54,6 +55,7 @@ py -3.14 -m venv .venv
 .\.venv\Scripts\python.exe .\eval\evaluate_rag_triad.py
 .\.venv\Scripts\python.exe .\eval\demo_memory.py
 .\.venv\Scripts\python.exe .\tests\smoke_api.py
+# Start mcp_server.py in a second PowerShell window first; leave it running.
 .\.venv\Scripts\python.exe .\src\nykaa_support\mcp_client.py
 .\.venv\Scripts\python.exe .\src\nykaa_support\resilience.py
 .\.venv\Scripts\python.exe -m uvicorn nykaa_support.api:app --reload

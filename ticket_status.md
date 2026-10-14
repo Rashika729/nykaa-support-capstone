@@ -8,7 +8,7 @@
 | Seeded synthetic order dataset | Done | 50 orders; seed 2603; all required categories and statuses; 14 delayed orders (28%) |
 | Required fictional knowledge base | Done | 12 topic documents in `data/knowledge_base/` |
 | Two RAG chunking strategies | Done | Separate fixed and sentence Chroma collections |
-| Retrieval calibration and document metrics | Done | Five in-scope and two out-of-scope queries; thresholds 0.534 fixed and 0.465 sentence; detailed P@3/R@3 in `reports/retrieval_evaluation.md` |
+| Retrieval calibration and document metrics | Done | Thresholds: 0.534 fixed and 0.465 sentence. For both strategies: P@3 0.333, R@3 1.000, P@1 1.000, and Hit@3 1.000; details in `reports/retrieval_evaluation.md`. |
 | LangGraph agent, order tool, memory, and safeguards | Done | Conditional order/policy routing, JSON memory, response validation, PII and injection guards, grounded abstention |
 | Conversation transcripts | Done | `reports/memory_demo.md` shows a grounded follow-up and a separate fresh session |
 | FastAPI and safe request traces | Done | `/health`, `/chat`, and `/ask`; smoke checks confirm trace IDs, timing, and masked phone/card values |
