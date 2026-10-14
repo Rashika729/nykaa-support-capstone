@@ -66,4 +66,5 @@ The RAG-triad evaluation reported 15/15 passing checks for context relevance, an
 
 Keep authored inputs such as the sample orders and knowledge-base documents in the repository. `.gitignore` excludes local environments and runtime artifacts such as indexes, checkpoints, memory, and traces.
 
-The public GitHub repository has not been published yet. Review the project and reports before creating the public repository and pushing the submission.
+The public repository is available at [Rashika729/nykaa-support-capstone](https://github.com/Rashika729/nykaa-support-capstone). The `main` branch tracks `origin/main`.
+
