@@ -24,14 +24,16 @@ The observed calibration values have a separating gap.
 
 ### Document-level Precision@3 and Recall@3
 
-- q01: retrieved ['01-return-window-by-category', '04-reverse-pickup-eligibility', '10-damaged-item-claims']; relevant ['01-return-window-by-category']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
-- q02: retrieved ['02-cod-refund-timelines', '01-return-window-by-category', '03-delivery-slas']; relevant ['02-cod-refund-timelines']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
-- q03: retrieved ['03-delivery-slas', '10-damaged-item-claims', '11-international-shipping-restrictions']; relevant ['03-delivery-slas']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
-- q04: retrieved ['04-reverse-pickup-eligibility', '05-warranty-by-category', '10-damaged-item-claims']; relevant ['04-reverse-pickup-eligibility']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
-- q05: retrieved ['05-warranty-by-category', '01-return-window-by-category', '10-damaged-item-claims']; relevant ['05-warranty-by-category']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+- q01: retrieved ['01-return-window-by-category', '04-reverse-pickup-eligibility', '10-damaged-item-claims']; relevant ['01-return-window-by-category']; P@3 = 1/3 = 0.333; P@1 = 1/1 = 1.000; Hit@3 = 1; R@3 = 1/1 = 1.000.
+- q02: retrieved ['02-cod-refund-timelines', '01-return-window-by-category', '03-delivery-slas']; relevant ['02-cod-refund-timelines']; P@3 = 1/3 = 0.333; P@1 = 1/1 = 1.000; Hit@3 = 1; R@3 = 1/1 = 1.000.
+- q03: retrieved ['03-delivery-slas', '10-damaged-item-claims', '11-international-shipping-restrictions']; relevant ['03-delivery-slas']; P@3 = 1/3 = 0.333; P@1 = 1/1 = 1.000; Hit@3 = 1; R@3 = 1/1 = 1.000.
+- q04: retrieved ['04-reverse-pickup-eligibility', '05-warranty-by-category', '10-damaged-item-claims']; relevant ['04-reverse-pickup-eligibility']; P@3 = 1/3 = 0.333; P@1 = 1/1 = 1.000; Hit@3 = 1; R@3 = 1/1 = 1.000.
+- q05: retrieved ['05-warranty-by-category', '01-return-window-by-category', '10-damaged-item-claims']; relevant ['05-warranty-by-category']; P@3 = 1/3 = 0.333; P@1 = 1/1 = 1.000; Hit@3 = 1; R@3 = 1/1 = 1.000.
 
 Average Precision@3: **0.333**.
 Average Recall@3: **1.000**.
+Average Precision@1: **1.000**.
+Average Hit@3: **1.000**.
 Indexed chunks: 25.
 
 ## Sentence chunking
@@ -54,14 +56,16 @@ The observed calibration values have a separating gap.
 
 ### Document-level Precision@3 and Recall@3
 
-- q01: retrieved ['01-return-window-by-category', '04-reverse-pickup-eligibility', '10-damaged-item-claims']; relevant ['01-return-window-by-category']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
-- q02: retrieved ['02-cod-refund-timelines', '01-return-window-by-category', '03-delivery-slas']; relevant ['02-cod-refund-timelines']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
-- q03: retrieved ['03-delivery-slas', '10-damaged-item-claims', '11-international-shipping-restrictions']; relevant ['03-delivery-slas']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
-- q04: retrieved ['04-reverse-pickup-eligibility', '12-customer-support-escalation-matrix', '06-order-cancellation']; relevant ['04-reverse-pickup-eligibility']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
-- q05: retrieved ['05-warranty-by-category', '01-return-window-by-category', '02-cod-refund-timelines']; relevant ['05-warranty-by-category']; P@3 = 1/3 = 0.333; R@3 = 1/1 = 1.000.
+- q01: retrieved ['01-return-window-by-category', '04-reverse-pickup-eligibility', '10-damaged-item-claims']; relevant ['01-return-window-by-category']; P@3 = 1/3 = 0.333; P@1 = 1/1 = 1.000; Hit@3 = 1; R@3 = 1/1 = 1.000.
+- q02: retrieved ['02-cod-refund-timelines', '01-return-window-by-category', '03-delivery-slas']; relevant ['02-cod-refund-timelines']; P@3 = 1/3 = 0.333; P@1 = 1/1 = 1.000; Hit@3 = 1; R@3 = 1/1 = 1.000.
+- q03: retrieved ['03-delivery-slas', '10-damaged-item-claims', '11-international-shipping-restrictions']; relevant ['03-delivery-slas']; P@3 = 1/3 = 0.333; P@1 = 1/1 = 1.000; Hit@3 = 1; R@3 = 1/1 = 1.000.
+- q04: retrieved ['04-reverse-pickup-eligibility', '12-customer-support-escalation-matrix', '06-order-cancellation']; relevant ['04-reverse-pickup-eligibility']; P@3 = 1/3 = 0.333; P@1 = 1/1 = 1.000; Hit@3 = 1; R@3 = 1/1 = 1.000.
+- q05: retrieved ['05-warranty-by-category', '01-return-window-by-category', '02-cod-refund-timelines']; relevant ['05-warranty-by-category']; P@3 = 1/3 = 0.333; P@1 = 1/1 = 1.000; Hit@3 = 1; R@3 = 1/1 = 1.000.
 
 Average Precision@3: **0.333**.
 Average Recall@3: **1.000**.
+Average Precision@1: **1.000**.
+Average Hit@3: **1.000**.
 Indexed chunks: 14.
 
 ## Recommendation

@@ -72,6 +72,8 @@ def evaluate_strategy(queries, strategy):
     chunk_count = len(prepare(strategy)[0])
     p_values = []
     r_values = []
+    p1_values = []
+    hit3_values = []
     lines.extend(["", "### Document-level Precision@3 and Recall@3", ""])
     for query_id in METRIC_QUERY_IDS:
         query = by_id[query_id]
@@ -93,18 +95,28 @@ def evaluate_strategy(queries, strategy):
         recall = matched / len(relevant)
         p_values.append(precision)
         r_values.append(recall)
+        precision_at_1 = int(retrieved_docs[0] in relevant)
+        hit_at_3 = int(matched > 0)
+        p1_values.append(precision_at_1)
+        hit3_values.append(hit_at_3)
         lines.append(
             f"- {query_id}: retrieved {retrieved_docs}; relevant {sorted(relevant)}; "
             f"P@3 = {matched}/3 = {precision:.3f}; "
+            f"P@1 = {precision_at_1}/1 = {precision_at_1:.3f}; "
+            f"Hit@3 = {hit_at_3}; "
             f"R@3 = {matched}/{len(relevant)} = {recall:.3f}."
         )
 
     avg_p = sum(p_values) / len(p_values)
     avg_r = sum(r_values) / len(r_values)
+    avg_p1 = sum(p1_values) / len(p1_values)
+    avg_hit3 = sum(hit3_values) / len(hit3_values)
     lines.extend([
         "",
         f"Average Precision@3: **{avg_p:.3f}**.",
         f"Average Recall@3: **{avg_r:.3f}**.",
+        f"Average Precision@1: **{avg_p1:.3f}**.",
+        f"Average Hit@3: **{avg_hit3:.3f}**.",
         f"Indexed chunks: {chunk_count}.",
         "",
     ])
@@ -114,6 +126,8 @@ def evaluate_strategy(queries, strategy):
         "min_in": min_in,
         "max_out": max_out,
         "avg_p": avg_p,
+        "avg_p1": avg_p1,
+        "avg_hit3": avg_hit3,
         "avg_r": avg_r,
         "chunks": chunk_count,
         "lines": lines,
