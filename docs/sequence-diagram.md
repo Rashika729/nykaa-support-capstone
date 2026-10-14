@@ -1,4 +1,4 @@
-﻿# Nykaa support request sequence
+# Nykaa support request sequence
 
 ```mermaid
 sequenceDiagram
@@ -9,6 +9,7 @@ sequenceDiagram
     participant Orders as Order lookup
     participant RAG as Policy retrieval
     participant KB as Chroma policy index
+    participant Escalation as Human escalation router
     participant Composer as Response composer
     participant Memory as Session memory
     participant Trace as Request trace
@@ -17,7 +18,7 @@ sequenceDiagram
     API->>Guard: Pass request to support graph
     Guard->>Guard: Mask fixed-format PII and check injection
     Guard->>Router: Send safe question
-    Router->>Router: Select order, policy, escalation, or blocked route
+    Router->>Router: Select order, policy, escalation, blocked, or scope route
 
     alt Order status question
         Router->>Orders: Look up sample record ID
@@ -27,8 +28,14 @@ sequenceDiagram
         RAG->>KB: Retrieve relevant policy chunks
         KB-->>RAG: Return ranked chunks and sources
         RAG-->>Composer: Return evidence or insufficient-evidence result
-    else Blocked or escalation route
-        Router-->>Composer: Return refusal or escalation guidance
+    else Escalation request
+        Router->>Escalation: Route for human review
+        Router->>RAG: Search related policy
+        RAG->>KB: Retrieve relevant policy chunks
+        KB-->>RAG: Return ranked chunks and sources
+        RAG-->>Composer: Return evidence and escalation guidance
+    else Blocked or official/current policy request
+        Router-->>Composer: Return refusal or scope notice
     end
 
     Composer->>Memory: Save masked user turn and response
