@@ -1,6 +1,6 @@
 ﻿# Ticket Status
 
-**Overall:** The capstone has been implemented and locally demonstrated. The public repository contains the earlier project version; the latest assignment updates still need to be committed and pushed.
+**Overall:** The capstone is implemented, demonstrated locally, committed, and pushed to the public repository.
 
 | Requirement | Status | Evidence |
 |---|---|---|
@@ -15,8 +15,9 @@
 | RAG-triad evaluation | Done | 15 queries; latest deterministic MOCK_LLM rubric averages are 1.000 for context relevance, groundedness, and answer relevance |
 | MCP client/server | Done | Separate HTTP client called `check_order_status` at `http://127.0.0.1:8000/mcp` for two sample records |
 | SQLite resume, retries, and timeouts | Done | `agent.py` checkpoints the support graph by session ID; `reports/resilience_demo.md` demonstrates same-thread resume, retry recovery, node timeout, and global timeout |
-| README and ignore rules | Updated locally | README records current assignment choices and results; `.gitignore` excludes runtime files |
-| Public GitHub submission | Earlier version published | https://github.com/Rashika729/nykaa-support-capstone; latest assignment updates are pending commit and push |
+| README and ignore rules | Done | README records current assignment choices and results; `.gitignore` excludes runtime files |
+| Sequence diagram | Done | docs/sequence-diagram.md documents the support request flow |
+| Public GitHub submission | Done | https://github.com/Rashika729/nykaa-support-capstone; latest changes are pushed to `main` |
 
 ## Evaluation notes
 
