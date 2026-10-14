@@ -95,3 +95,15 @@ assert invalid_phone not in json.dumps(invalid_trace), invalid_trace
 assert "[REDACTED_PHONE]" in invalid_trace["message"], invalid_trace
 
 print("PASS: rejected /chat request was traced with masked PII")
+
+memory_path = PROJECT_ROOT / "data" / "memory" / f"{session_id}.json"
+memory_text = memory_path.read_text(encoding="utf-8")
+
+assert email not in memory_text, memory_text
+assert phone not in memory_text, memory_text
+assert f"card ending in {card_last4}" not in memory_text, memory_text
+assert "[REDACTED_EMAIL]" in memory_text, memory_text
+assert "[REDACTED_PHONE]" in memory_text, memory_text
+assert "[REDACTED_CARD_LAST4]" in memory_text, memory_text
+
+print("PASS: conversation memory contains masked values, not raw PII")
