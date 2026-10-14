@@ -1,6 +1,6 @@
 # RAG-Triad Evaluation
 
-Evaluated: 2026-10-14 17:05 UTC
+Evaluated: 2026-10-14 19:52 UTC
 Queries: 15 total; all 12 required KB topics plus 3 unsupported or official-policy cases.
 
 ## MOCK_LLM Judge Prompt
