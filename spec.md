@@ -38,6 +38,31 @@ Build a beginner-friendly, production-minded support agent for a simulated Nykaa
 - Implement exponential-backoff retries for transient failures.
 - Demonstrate per-node timeout handling and a global workflow timeout.
 
+## User stories
+
+- As a shopper, I want an answer to a fictional store-policy question with its source, or a clear fallback when the available policy text does not support an answer.
+- As a shopper, I want to look up a sample order by its record ID and see its status and escalation information.
+- As a support operator, I want unsafe requests blocked, fixed-format PII masked, and conversation and request traces handled consistently.
+- As a project reviewer, I want to reproduce the generated dataset and inspect the retrieval, evaluation, memory, API, MCP, and resilience demonstrations.
+
+## Design decisions
+
+- Generate fictional order records locally from a documented seed; do not connect to real customer or order systems.
+- Use deterministic routing and response templates in MOCK_LLM mode so the project runs without inference API credentials.
+- Index fixed-size and sentence-based chunks in separate collections; use the sentence collection in the agent based on the measured retrieval results.
+- Set the sentence retrieval threshold to 0.465 from the measured in-scope and out-of-scope calibration scores; use a separate guard for requests about official or current policy.
+- Mask fixed-format email, phone, and card last-four values before they enter conversation memory or request traces. Free-text names and addresses are fabricated and outside reliable masking scope.
+- Store conversation turns in JSON files and checkpoint the support graph in SQLite by session ID.
+
+## Testing and verification strategy
+
+- Run `dataset.py` and inspect the printed seed, category and status counts, and delayed-shipment percentage.
+- Run the RAG indexer and retrieval evaluator; review calibration scores and document-level Precision@3 and Recall@3 for both chunking strategies.
+- Run the 15-query RAG-triad evaluation. It uses a deterministic local rubric in MOCK_LLM mode, not a model-generated judgment; interpret its scores accordingly.
+- Run `tests/smoke_api.py` to check API behavior, request validation and traces, PII masking, injection blocking, and memory redaction.
+- Run `eval/demo_memory.py` and `src/nykaa_support/resilience.py` to inspect conversation memory, checkpoint resume, retries, and timeout demonstrations.
+- Start the HTTP MCP server and run the separate MCP client to verify order lookups for sample record IDs.
+
 ## Quality requirements
 - Tests and demonstrations must be reproducible, local-first, and clearly label simulated behavior.
 - Configuration and data paths must be documented; secrets must not be required.
