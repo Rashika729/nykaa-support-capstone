@@ -16,8 +16,10 @@ ROOT = Path(__file__).resolve().parents[2]
 KB_DIR = ROOT / "data" / "knowledge_base"
 DB_DIR = ROOT / "data" / "chroma"
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-SIMILARITY_THRESHOLD = 0.39  # Recalibrate with eval/measure_retrieval.py before grading.
-
+SIMILARITY_THRESHOLDS = {
+    "fixed": 0.534,
+    "sentence": 0.465,
+}
 
 def read_documents() -> list[tuple[str, str]]:
     files = sorted(KB_DIR.glob("*.md"))
@@ -143,19 +145,19 @@ def retrieve(question: str, strategy: str = "fixed", k: int = 3) -> list[dict]:
 
 
 def search(question: str, strategy: str) -> None:
+    threshold = SIMILARITY_THRESHOLDS[strategy]
     hits = retrieve(question, strategy=strategy, k=3)
-    if not hits or hits[0]["similarity"] < SIMILARITY_THRESHOLD:
+    if not hits or hits[0]["similarity"] < threshold:
         print(
-            "I do not know: no retrieved policy evidence reached the current "
-            f"similarity threshold ({SIMILARITY_THRESHOLD:.3f})."
+            "I do not know: no retrieved policy evidence reached the "
+            f"measured {strategy} threshold ({threshold:.3f})."
         )
         return
     for rank, hit in enumerate(hits, start=1):
-        if hit["similarity"] < SIMILARITY_THRESHOLD:
+        if hit["similarity"] < threshold:
             continue
         print(f"\n{rank}. {hit['source']} | similarity: {hit['similarity']:.3f}")
         print(hit["text"])
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Search fictional policy documents")

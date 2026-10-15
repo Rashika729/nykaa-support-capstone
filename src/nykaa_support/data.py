@@ -36,7 +36,7 @@ class Order:
 
 
 def build_orders(count: int = 48) -> list[Order]:
-    """Return repeatable fictional records; names and emails are placeholders."""
+    """Return repeatable fictional customer records for local demos."""
     if count < 40:
         raise ValueError("The assignment requires at least 40 orders.")
 
