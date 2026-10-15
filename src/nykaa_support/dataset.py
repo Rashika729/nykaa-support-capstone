@@ -1,4 +1,4 @@
-﻿"""Seeded synthetic orders for the Nykaa capstone; all records are fictional."""
+"""Seeded synthetic orders for the Nykaa capstone; all records are fictional."""
 
 import csv
 import random
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 def order_escalation_score(order):
     """Score delay risk and normalized age on a 0.0–1.0 scale."""
     delayed_signal = 1.0 if order["delayed_shipment"] else 0.0
-    normalized_recency = int(order["days_since_created"]) / 30.0
+    normalized_recency = max(0.0, min(int(order["days_since_created"]) / 30.0, 1.0))
     return round(0.70 * delayed_signal + 0.30 * normalized_recency, 4)
 
 
